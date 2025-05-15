@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { WalletState, checkInDeadMansWallet } from '../store/walletSlice';
 import { toast } from 'react-toastify';
@@ -37,16 +38,40 @@ export const useDeadMansWallet = () => {
         toast.warning(`Your dead man's wallet check-in is due in 3 days!`, {
           position: "top-right",
           autoClose: 10000,
+          style: {
+            background: "linear-gradient(to right, #f0f9ff, #e0f2fe)",
+            color: "#0369a1",
+            border: "1px solid #bae6fd",
+            borderRadius: "0.75rem",
+            padding: "12px 16px",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+          }
         });
       } else if (differenceDays === 1) {
         toast.error(`Your dead man's wallet check-in is due TOMORROW!`, {
           position: "top-right",
           autoClose: false,
+          style: {
+            background: "linear-gradient(to right, #fee2e2, #fecaca)",
+            color: "#b91c1c",
+            border: "1px solid #fca5a5",
+            borderRadius: "0.75rem",
+            padding: "12px 16px",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+          }
         });
       } else if (differenceDays <= 0) {
         toast.error(`Your check-in deadline has EXPIRED! Funds may be transferred soon.`, {
           position: "top-right",
           autoClose: false,
+          style: {
+            background: "linear-gradient(to right, #7f1d1d, #991b1b)",
+            color: "#fef2f2",
+            border: "1px solid #b91c1c",
+            borderRadius: "0.75rem",
+            padding: "12px 16px", 
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)"
+          }
         });
       }
     };

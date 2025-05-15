@@ -51,6 +51,7 @@ const DeadMansWallet: React.FC = () => {
   const [newDestinationAddress, setNewDestinationAddress] = useState('');
   const [newCheckInPeriod, setNewCheckInPeriod] = useState('30');
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [checkingIn, setCheckingIn] = useState(false);
 
   // In a real implementation, this would fetch settings from the blockchain
   const handleSaveSettings = async () => {
@@ -124,154 +125,173 @@ const DeadMansWallet: React.FC = () => {
     return Math.max(0, Math.min(100, (remainingMs / totalPeriodMs) * 100));
   };
 
-  const checkInStatusContent = (
-    <div className="mt-4">
-      {deadMansWallet.isConfigured ? (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800/60 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm shadow-sm overflow-hidden">
-          <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-gray-200 dark:border-gray-800/60 flex items-center">
-            <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md flex items-center justify-center mr-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Dead Man's Switch Status</h3>
+  // Function to handle checking in with loading state
+  const handleCheckInWithLoader = async () => {
+    setCheckingIn(true);
+    try {
+      await handleCheckIn();
+    } finally {
+      setCheckingIn(false);
+    }
+  };
+
+  // Calculate time remaining in milliseconds for display
+  const getTimeRemainingMs = (): number => {
+    if (!deadMansWallet.isConfigured || !deadMansWallet.nextCheckInDeadline) {
+      return 0;
+    }
+    
+    const nextDeadline = new Date(deadMansWallet.nextCheckInDeadline).getTime();
+    const now = Date.now();
+    return Math.max(0, nextDeadline - now);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Dead Man's Wallet</h3>
+        {deadMansWallet.isConfigured && (
+          <Badge 
+            color={getBadgeColor()} 
+            size="sm"
+            variant="flat"
+          >
+            {timeExpired ? "Expired" : `${daysRemaining} days left`}
+          </Badge>
+        )}
+      </CardHeader>
+      <CardBody>
+        {!isConnected ? (
+          <div className="text-center">
+            <p className="mb-2">Connect your wallet to use this feature</p>
           </div>
-          
-          <div className="p-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-medium dark:text-gray-300 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                </svg>
-                Destination Address
-              </span>
-              <span className="text-xs text-gray-600 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800/60 px-2 py-1 rounded">
-                {deadMansWallet.destinationAddress}
-              </span>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-medium dark:text-gray-300 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Check-in Period
-              </span>
-              <span className="text-xs text-gray-600 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800/60 px-2 py-1 rounded">
-                {deadMansWallet.checkInPeriod} {Number(deadMansWallet.checkInPeriod) === 1 ? 'day' : 'days'}
-              </span>
-            </div>
-            
-            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800/60">
-              {deadMansWallet.nextCheckInDeadline && (
-                <div className="flex flex-col">
-                  <div className="flex justify-between items-center mb-1.5">
+        ) : isLoading ? (
+          <div className="flex items-center justify-center">
+            <Spinner size="sm" />
+            <p className="ml-2">Loading...</p>
+          </div>
+        ) : (
+          <div className="mt-4">
+            {deadMansWallet.isConfigured ? (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800/60 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm shadow-sm overflow-hidden">
+                <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-gray-200 dark:border-gray-800/60 flex items-center">
+                  <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md flex items-center justify-center mr-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Dead Man's Switch Status</h3>
+                </div>
+                
+                <div className="p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium dark:text-gray-300 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                      Destination Address
+                    </span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800/60 px-2 py-1 rounded">
+                      {deadMansWallet.destinationAddress}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
                     <span className="text-xs font-medium dark:text-gray-300 flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Time Remaining
+                      Check-in Period
                     </span>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                      getTimeRemainingPercentage() > 50 
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                        : getTimeRemainingPercentage() > 25 
-                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' 
-                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    }`}>
-                      {timeExpired ? 'Expired!' : formatTimeRemaining(
-                        new Date(deadMansWallet.nextCheckInDeadline).getTime() - Date.now()
-                      )}
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800/60 px-2 py-1 rounded">
+                      {deadMansWallet.checkInPeriod} {Number(deadMansWallet.checkInPeriod) === 1 ? 'day' : 'days'}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-1">
-                    <div 
-                      className={`h-1.5 rounded-full ${
-                        getTimeRemainingPercentage() > 50 
-                          ? 'bg-gradient-to-r from-green-400 to-green-500' 
-                          : getTimeRemainingPercentage() > 25 
-                            ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
-                            : 'bg-gradient-to-r from-red-400 to-red-500'
-                      }`}
-                      style={{ width: `${getTimeRemainingPercentage()}%` }}
-                    ></div>
+                  
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800/60">
+                    {deadMansWallet.nextCheckInDeadline && (
+                      <div className="flex flex-col">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-xs font-medium dark:text-gray-300 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Time Remaining
+                          </span>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                            getTimeRemainingPercentage() > 50 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                              : getTimeRemainingPercentage() > 25 
+                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' 
+                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {timeExpired ? 'Expired!' : formatTimeRemaining(getTimeRemainingMs())}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-1">
+                          <div 
+                            className={`h-1.5 rounded-full ${
+                              getTimeRemainingPercentage() > 50 
+                                ? 'bg-gradient-to-r from-green-400 to-green-500' 
+                                : getTimeRemainingPercentage() > 25 
+                                  ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
+                                  : 'bg-gradient-to-r from-red-400 to-red-500'
+                            }`}
+                            style={{ width: `${getTimeRemainingPercentage()}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1"
+                        onClick={handleCheckInWithLoader}
+                        isLoading={checkingIn}
+                        size="sm"
+                      >
+                        Check In Now
+                      </Button>
+                      <Button
+                        className="w-full border border-red-200 dark:border-red-900/30 text-red-500 dark:text-red-400 dark:bg-red-900/10 text-xs py-1"
+                        onClick={() => {
+                          setNewDestinationAddress(deadMansWallet.destinationAddress || '');
+                          setNewCheckInPeriod(deadMansWallet.checkInPeriod.toString());
+                          onOpen();
+                        }}
+                        variant="flat"
+                        size="sm"
+                      >
+                        Edit Settings
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              )}
-              
-              <div className="flex gap-2 mt-4">
-                <Button
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1"
-                  onClick={handleCheckIn}
-                  isLoading={isLoading}
-                  size="sm"
-                >
-                  Check In Now
-                </Button>
-                <Button
-                  className="w-full border border-red-200 dark:border-red-900/30 text-red-500 dark:text-red-400 dark:bg-red-900/10 text-xs py-1"
-                  onClick={() => {
-                    setNewDestinationAddress(deadMansWallet.destinationAddress || '');
-                    setNewCheckInPeriod(deadMansWallet.checkInPeriod.toString());
-                    onOpen();
-                  }}
-                  variant="flat"
-                  size="sm"
-                >
-                  Edit Settings
-                </Button>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800/60 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm shadow-sm p-4">
+                <div className="flex flex-col items-center text-center p-2">
+                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Dead Man's Switch Not Configured</h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                    Set up a dead man's switch to automatically transfer your funds if you don't check in regularly.
+                  </p>
+                  <Button
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs"
+                    onClick={() => onOpen()}
+                    size="sm"
+                  >
+                    Configure Switch
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800/60 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm shadow-sm p-4">
-          <div className="flex flex-col items-center text-center p-2">
-            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Dead Man's Switch Not Configured</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
-              Set up a dead man's switch to automatically transfer your funds if you don't check in regularly.
-            </p>
-            <Button
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs"
-              onClick={() => onOpen()}
-              size="sm"
-            >
-              Configure Switch
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  return (
-    <Card className="w-full">
-      <CardHeader className="flex justify-between items-center">
-        <div>
-          <p className="text-md">Dead Man's Wallet</p>
-          <p className="text-xs text-default-500">
-            Protect your assets in case of inactivity
-          </p>
-        </div>
-        {deadMansWallet.isConfigured && deadMansWallet.nextCheckInDeadline && (
-          <Badge color={getBadgeColor()}>
-            {timeExpired ? "EXPIRED!" : `${daysRemaining} days remaining`}
-          </Badge>
         )}
-      </CardHeader>
-      <Divider />
-      <CardBody>
-        {isLoading ? (
-          <div className="flex justify-center items-center p-6">
-            <Spinner />
-            <p className="ml-2">Loading...</p>
-          </div>
-        ) : checkInStatusContent}
 
         {/* Configuration Modal */}
         <Modal isOpen={isOpen} onClose={onClose} className="backdrop-blur-sm">
@@ -366,6 +386,6 @@ const DeadMansWallet: React.FC = () => {
       </CardBody>
     </Card>
   );
-};
+}
 
 export default DeadMansWallet; 
