@@ -7,6 +7,8 @@ import {
   fundWallet
 } from '../store/walletSlice';
 import { Button, Divider, Spinner, Card, CardBody, CardHeader, Badge } from "@heroui/react";
+import { fundAccountDirectly, fundWithExplorer } from '../lib/passkey';
+import FundWithLaunchtube from './FundWithLaunchtube';
 
 const shortenAddress = (address: string) => {
   if (!address) return '';
@@ -44,6 +46,32 @@ const ConnectedWallet = () => {
       return;
     }
     dispatch(fundWallet() as any);
+  };
+  
+  const handleDirectFund = async () => {
+    if (isLocalWallet) {
+      alert('Local wallets cannot be funded from the testnet.');
+      return;
+    }
+    
+    console.log("Attempting to fund wallet:", contractId);
+    try {
+      // Try the new explorer-based funding method
+      const result = await fundWithExplorer(contractId);
+      console.log("Funding result:", result);
+      
+      if (result.success) {
+        alert('Funding successful! Refreshing balance...');
+        dispatch(checkBalance() as any);
+      } else if (result.manualUrl) {
+        alert('Automatic funding failed. We opened a tab with Stellar Laboratory where you can fund your account manually.');
+      } else {
+        alert('Funding failed. See console for details.');
+      }
+    } catch (error) {
+      console.error("Funding error:", error);
+      alert('Funding failed with an error. See console for details.');
+    }
   };
 
   const handleCopyAddress = () => {
@@ -128,19 +156,13 @@ const ConnectedWallet = () => {
                 `${balance || '0'} XLM`
               )}
             </p>
-            {!isLocalWallet && (
-              <Button
-                size="sm"
-                variant="flat"
-                className="ml-2"
-                onClick={handleFund}
-                isDisabled={isLoading}
-              >
-                Fund
-              </Button>
-            )}
+
           </div>
         </div>
+
+        {!isLocalWallet && (
+          <FundWithLaunchtube />
+        )}
 
         <Divider className="my-3" />
         

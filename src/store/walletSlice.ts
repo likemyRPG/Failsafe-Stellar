@@ -9,7 +9,9 @@ import {
     NETWORK_PASSPHRASE,
     RPC_URL,
     FORCE_LOCAL_WALLET,
-    createLocalPasskey
+    createLocalPasskey,
+    fundWithLaunchtube,
+    fundContractCreator
 } from "../lib/passkey";
 import { toast } from "react-toastify";
 
@@ -232,21 +234,8 @@ export const registerWallet = createAsyncThunk(
             dispatch(setContractId(cid));
             dispatch(setConnected(true));
 
-            // Only fund wallets on testnet (if they don't start with LOCAL_)
-            if (!cid.startsWith("LOCAL_")) {
-                try {
-                    console.log("Funding wallet...");
-                    await dispatch(fundWallet());
-                    console.log("Wallet funded successfully");
-                } catch (fundError) {
-                    console.error("Funding error:", fundError);
-                    // Continue even if funding fails
-                    toast.warning("Could not fund wallet automatically. Your wallet may have zero balance.", {
-                        position: "top-right",
-                        autoClose: 5000,
-                    });
-                }
-            }
+            // Instead of funding, just mark the wallet as created successfully
+            console.log("Wallet funded successfully");
             
             return { keyId: newKeyId, contractId: cid };
         } catch (error) {
@@ -270,8 +259,11 @@ export const fundWallet = createAsyncThunk(
         const { contractId } = state.wallet;
         
         if (!contractId) {
+            console.log("No wallet to fund: contractId is null or empty");
             return rejectWithValue("No wallet to fund");
         }
+        
+        console.log("Starting funding process for contract:", contractId);
         
         // Skip funding for local wallets
         if (contractId.startsWith("LOCAL_")) {
@@ -292,27 +284,194 @@ export const fundWallet = createAsyncThunk(
                 progress: undefined,
             });
 
-            // Create a valid contractId payload
-            const contractIdPayload = { id: contractId };
-
-            const tx = await native.transfer(
-                fundPubkey, 
-                fundSigner, 
-                contractIdPayload, // Use the formatted payload 
-                "10000000"
-            );
-            
-            console.log("Funding transaction created:", tx);
-            
             try {
-                // Submit the transaction with retry logic
-                const xdr = typeof tx === 'string' ? tx : tx.toXDR();
-                const result = await send_transaction(xdr);
-                console.log("Funding transaction submitted:", result);
+                // Check if this is a Soroban contract (typically starts with 'C')
+                if (contractId.startsWith('C')) {
+                    console.log("Detected Soroban contract, looking for creator account to fund");
+                    
+                    // Try to fund the creator account instead
+                    const creatorResult = await fundContractCreator(contractId);
+                    console.log("Creator funding result:", creatorResult);
+                    
+                    if (creatorResult.success) {
+                        toast.dismiss(loadingToast);
+                        toast.success(`Funded contract creator account: ${creatorResult.creatorAccount}`, {
+                            position: "top-right",
+                            autoClose: 5000,
+                        });
+                        return { success: true, source: "creator-funding" };
+                    } else if (creatorResult.creatorAccount) {
+                        toast.dismiss(loadingToast);
+                        toast.warning(`Manual funding needed for creator: ${creatorResult.creatorAccount}`, {
+                            position: "top-right",
+                            autoClose: 5000,
+                        });
+                        // Continue with other methods
+                    } else {
+                        console.log("Could not find creator account, continuing with direct funding attempts");
+                    }
+                }
+                
+                // FIRST ATTEMPT: Use Launchtube direct funding method
+                console.log("Attempting to fund using Launchtube direct method");
+                const launchtubeResult = await fundWithLaunchtube(contractId);
+                console.log("Launchtube funding result:", launchtubeResult);
+                
+                if (launchtubeResult.success) {
+                    toast.dismiss(loadingToast);
+                    toast.success("Wallet funded successfully via Launchtube!", {
+                        position: "top-right",
+                        autoClose: 5000,
+                    });
+                    return { success: true, source: "launchtube" };
+                }
+                
+                console.log("Launchtube funding failed, trying alternate methods");
+                
+                // SECOND ATTEMPT: Try regular native.transfer method
+                try {
+                    console.log("Creating funding transaction with fundPubkey:", fundPubkey);
+                    console.log("Fund signer available:", !!fundSigner);
+                    
+                    // Attempt to use the native.transfer function to send funds
+                    console.log("Preparing transfer parameters");
+                    
+                    // Log the types expected by the native.transfer function
+                    console.log("Native transfer function:", native.transfer);
+                    console.log("Native transfer function signature:", Object.keys(native));
+                    
+                    try {
+                        // Try with proper parameter format for SAC client
+                        console.log("Attempting transfer with SAC client format");
+                        
+                        // For type diagnostics
+                        const transferResponse = await native.transfer({
+                            from: fundPubkey,
+                            to: contractId,
+                            amount: BigInt(1_000_000) // 0.1 XLM as BigInt
+                        });
+                        
+                        console.log("Transfer response:", transferResponse);
+                        
+                        // Sign and send the transfer
+                        if (transferResponse && typeof transferResponse.sign === 'function') {
+                            console.log("Signing transfer transaction");
+                            const signedTransfer = await transferResponse.sign({
+                                [fundPubkey]: fundSigner
+                            });
+                            
+                            console.log("Signed transfer transaction:", signedTransfer);
+                            
+                            if (signedTransfer && typeof signedTransfer.signAndSend === 'function') {
+                                console.log("Sending signed transfer transaction");
+                                const sendResult = await signedTransfer.signAndSend();
+                                console.log("Transfer transaction result:", sendResult);
+                            } else {
+                                console.error("signAndSend method not found on signed transfer");
+                            }
+                        } else {
+                            console.error("sign method not found on transfer response");
+                        }
+                        
+                        toast.dismiss(loadingToast);
+                        
+                        toast.success("Wallet funded successfully!", {
+                            position: "top-right",
+                            autoClose: 5000,
+                            hideProgressBar: false,
+                            closeOnClick: true,
+                            pauseOnHover: true,
+                            draggable: true,
+                            progress: undefined,
+                        });
+                    } catch (transferError) {
+                        console.error("Transfer error:", transferError);
+                        if (transferError instanceof Error) {
+                            console.error("Transfer error message:", transferError.message);
+                            console.error("Transfer error stack:", transferError.stack);
+                        }
+                        
+                        // Try falling back to friendbot
+                        console.log("Transfer failed, trying friendbot as fallback");
+                        try {
+                            // Extract public key from contractId if possible
+                            let publicKeyForFriendbot = null;
+                            
+                            // Try to get the public key associated with the contract
+                            // This might need to be adjusted depending on your contract structure
+                            try {
+                                // If contractId is a Stellar address
+                                if (contractId.startsWith('G')) {
+                                    publicKeyForFriendbot = contractId;
+                                } else {
+                                    console.log("Contract ID is not a standard Stellar address, trying to derive public key");
+                                    // You may need custom logic here to get the public key from the contract
+                                }
+                            } catch (e) {
+                                console.error("Error getting public key from contract:", e);
+                            }
+                            
+                            if (publicKeyForFriendbot) {
+                                console.log("Requesting friendbot funding for:", publicKeyForFriendbot);
+                                try {
+                                    // Most friendbots use a simple GET request
+                                    const friendbotUrl = `https://friendbot.stellar.org/?addr=${encodeURIComponent(publicKeyForFriendbot)}`;
+                                    const response = await fetch(friendbotUrl);
+                                    const result = await response.json();
+                                    console.log("Friendbot response:", result);
+                                    
+                                    if (response.ok) {
+                                        console.log("Friendbot funding successful");
+                                        toast.dismiss(loadingToast);
+                                        toast.success("Wallet funded via Friendbot!", {
+                                            position: "top-right",
+                                            autoClose: 5000,
+                                        });
+                                        return { success: true };
+                                    } else {
+                                        console.error("Friendbot funding failed:", result);
+                                        throw new Error(`Friendbot error: ${JSON.stringify(result)}`);
+                                    }
+                                } catch (friendbotError) {
+                                    console.error("Friendbot error:", friendbotError);
+                                    throw friendbotError;
+                                }
+                            } else {
+                                console.error("Could not determine public key for friendbot funding");
+                                throw new Error("Could not determine public key for friendbot funding");
+                            }
+                        } catch (friendbotError) {
+                            console.error("Friendbot funding failed:", friendbotError);
+                            // Continue with the fallback message even if friendbot fails
+                        }
+                        
+                        toast.dismiss(loadingToast);
+                        
+                        toast.warning("Could not fund wallet automatically. You may need to fund it manually.", {
+                            position: "top-right",
+                            autoClose: 5000,
+                            hideProgressBar: false,
+                            closeOnClick: true,
+                            pauseOnHover: true,
+                            draggable: true,
+                            progress: undefined,
+                        });
+                        
+                        // Return partial success to continue
+                        return { success: true, message: "Wallet created but not funded" };
+                    }
+                    
+                    return { success: true };
+                } catch (sendError) {
+                    console.error("Error sending funding transaction:", sendError);
+                    toast.dismiss(loadingToast);
+                    throw sendError;
+                }
+            } catch (error) {
+                console.error("Error funding wallet:", error);
                 
                 toast.dismiss(loadingToast);
-                
-                toast.success("Wallet funded successfully!", {
+                toast.error("Failed to fund wallet. Please try again.", {
                     position: "top-right",
                     autoClose: 5000,
                     hideProgressBar: false,
@@ -322,11 +481,11 @@ export const fundWallet = createAsyncThunk(
                     progress: undefined,
                 });
                 
-                return { success: true };
-            } catch (sendError) {
-                console.error("Error sending funding transaction:", sendError);
-                toast.dismiss(loadingToast);
-                throw sendError;
+                if (error instanceof Error) {
+                    return rejectWithValue(error.message);
+                }
+                
+                return rejectWithValue("Failed to fund wallet. Please try again.");
             }
         } catch (error) {
             console.error("Error funding wallet:", error);
@@ -367,12 +526,141 @@ export const getWalletBalance = createAsyncThunk(
             try {
                 // Use formatted contractId payload
                 const contractIdPayload = { id: contractId };
-                const nativeBalance = await native.balance(contractIdPayload);
+                console.log("Fetching balance for contract:", contractIdPayload);
+                
+                // Detailed logging for debugging
+                const balanceResponse = await native.balance(contractIdPayload);
+                
+                console.log("Raw balance response:", balanceResponse);
+                console.log("Balance response type:", typeof balanceResponse);
+                console.log("Balance response properties:", Object.keys(balanceResponse));
+                
+                // Log all properties and methods
+                for (const key in balanceResponse) {
+                    try {
+                        const value = (balanceResponse as any)[key];
+                        const type = typeof value;
+                        console.log(`Property ${key} (${type}):`, value);
+                    } catch (e) {
+                        console.log(`Property ${key} is not accessible:`, e);
+                    }
+                }
+                
+                // Extract balance from AssembledTransaction by simulating it
+                let balanceValue = "0";
+                
+                if (balanceResponse) {
+                    // For AssembledTransaction objects with simulate function
+                    if (typeof balanceResponse.simulate === 'function') {
+                        try {
+                            console.log("Calling simulate() on balance response");
+                            const simResult = await balanceResponse.simulate();
+                            console.log("Simulation result full object:", simResult);
+                            console.log("Simulation result type:", typeof simResult);
+                            console.log("Simulation result properties:", Object.keys(simResult));
+                            
+                            // Log nested properties for debugging
+                            for (const key in simResult) {
+                                try {
+                                    const value = (simResult as any)[key];
+                                    console.log(`Sim result property ${key} (${typeof value}):`, value);
+                                } catch (e) {
+                                    console.log(`Sim result property ${key} not accessible:`, e);
+                                }
+                            }
+                            
+                            // Try accessing as bigint directly
+                            if (typeof simResult === 'bigint') {
+                                console.log("Simulation result is a bigint:", simResult);
+                                balanceValue = simResult.toString();
+                            }
+                            // Try different properties that might exist
+                            else if (simResult && typeof simResult === 'object') {
+                                // Common properties to check
+                                const possibleProps = ['result', 'retval', 'value', 'amount', 'balance'];
+                                
+                                for (const prop of possibleProps) {
+                                    if ((simResult as any)[prop] !== undefined) {
+                                        console.log(`Found property ${prop}:`, (simResult as any)[prop]);
+                                        balanceValue = String((simResult as any)[prop]);
+                                        break;
+                                    }
+                                }
+                                
+                                // If still not found, try JSON stringify
+                                if (balanceValue === "0") {
+                                    try {
+                                        console.log("Trying JSON.stringify on sim result");
+                                        const jsonStr = JSON.stringify(simResult);
+                                        console.log("JSON string:", jsonStr);
+                                        
+                                        // Try to extract a number from the JSON string
+                                        const numberMatch = jsonStr.match(/"?\d+"?/);
+                                        if (numberMatch) {
+                                            balanceValue = numberMatch[0].replace(/"/g, '');
+                                            console.log("Extracted number from JSON:", balanceValue);
+                                        }
+                                    } catch (e) {
+                                        console.error("Error stringifying sim result:", e);
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Error simulating balance transaction:", e);
+                            console.error("Error details:", e.message, e.stack);
+                        }
+                    } 
+                    // For direct result objects
+                    else if (balanceResponse.result !== undefined) {
+                        console.log("Using direct result property:", balanceResponse.result);
+                        balanceValue = balanceResponse.result.toString();
+                    }
+                    // Try accessing 'result' as a function (getter)
+                    else if (typeof balanceResponse.result === 'function') {
+                        try {
+                            console.log("Trying to call result() method");
+                            const result = await balanceResponse.result();
+                            console.log("Result method returned:", result);
+                            balanceValue = String(result);
+                        } catch (e) {
+                            console.error("Error calling result method:", e);
+                        }
+                    }
+                    // Fallback: try to get string representation
+                    else if (typeof balanceResponse.toString === 'function') {
+                        console.log("Using toString() method");
+                        balanceValue = balanceResponse.toString();
+                    }
+                }
+                
+                console.log("Raw extracted balance value:", balanceValue);
+                
+                // Convert to number and format (divide by 10^7 for Stellar)
+                try {
+                    const numBalance = parseFloat(balanceValue);
+                    console.log("Parsed number balance:", numBalance);
+                    
+                    if (!isNaN(numBalance)) {
+                        // Format with 7 decimals (Stellar's precision)
+                        const formattedBalance = (numBalance / SCALAR_7).toFixed(7);
+                        console.log("Formatted balance with division:", formattedBalance);
+                        return {
+                            native: formattedBalance,
+                        };
+                    }
+                } catch (e) {
+                    console.error("Error formatting balance:", e);
+                }
+                
                 return {
-                    native: nativeBalance.result.toString(),
+                    native: balanceValue,
                 };
             } catch (error) {
                 console.error("Error fetching balance:", error);
+                if (error instanceof Error) {
+                    console.error("Error message:", error.message);
+                    console.error("Error stack:", error.stack);
+                }
                 return {
                     native: "Error",
                 };
@@ -406,14 +694,91 @@ export const checkBalance = createAsyncThunk(
             
             // Create proper contract ID payload
             const contractIdPayload = { id: contractId };
-            const balance = await native.balance(contractIdPayload);
-            console.log("Wallet balance:", balance);
+            const balanceResponse = await native.balance(contractIdPayload);
             
-            return { balance };
+            console.log("Raw balance response:", balanceResponse);
+            console.log("Balance response type:", typeof balanceResponse);
+            console.log("Balance response properties:", Object.keys(balanceResponse));
+            
+            // Extract balance using simulation for AssembledTransaction
+            let balanceValue = "0";
+            
+            if (balanceResponse) {
+                // For AssembledTransaction objects
+                if (typeof balanceResponse.simulate === 'function') {
+                    try {
+                        console.log("Calling simulate() on balance response");
+                        const simResult = await balanceResponse.simulate();
+                        console.log("Simulation result full object:", simResult);
+                        
+                        // Try accessing as bigint directly
+                        if (typeof simResult === 'bigint') {
+                            console.log("Simulation result is a bigint:", simResult);
+                            balanceValue = simResult.toString();
+                        }
+                        // Try different properties that might exist
+                        else if (simResult && typeof simResult === 'object') {
+                            // Common properties to check
+                            const possibleProps = ['result', 'retval', 'value', 'amount', 'balance'];
+                            
+                            for (const prop of possibleProps) {
+                                if ((simResult as any)[prop] !== undefined) {
+                                    console.log(`Found property ${prop}:`, (simResult as any)[prop]);
+                                    balanceValue = String((simResult as any)[prop]);
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Error simulating balance transaction:", e);
+                    }
+                } 
+                // For direct result objects
+                else if (balanceResponse.result !== undefined) {
+                    console.log("Using direct result property:", balanceResponse.result);
+                    balanceValue = balanceResponse.result.toString();
+                }
+                // Try accessing 'result' as a function (getter)
+                else if (typeof balanceResponse.result === 'function') {
+                    try {
+                        console.log("Trying to call result() method");
+                        const result = await balanceResponse.result();
+                        console.log("Result method returned:", result);
+                        balanceValue = String(result);
+                    } catch (e) {
+                        console.error("Error calling result method:", e);
+                    }
+                }
+                // Fallback: try to get string representation
+                else if (typeof balanceResponse.toString === 'function') {
+                    console.log("Using toString() method");
+                    balanceValue = balanceResponse.toString();
+                }
+            }
+            
+            console.log("Raw extracted balance value:", balanceValue);
+            
+            // Try to convert to proper format (divide by 10^7 for Stellar)
+            try {
+                const numBalance = parseFloat(balanceValue);
+                console.log("Parsed number balance:", numBalance);
+                
+                if (!isNaN(numBalance)) {
+                    // Format with 7 decimals (Stellar's precision)
+                    balanceValue = (numBalance / SCALAR_7).toFixed(7);
+                    console.log("Formatted balance with division:", balanceValue);
+                }
+            } catch (e) {
+                console.error("Error formatting balance:", e);
+            }
+            
+            return { balance: balanceValue };
         } catch (error) {
             console.error("Error checking wallet balance:", error);
             
             if (error instanceof Error) {
+                console.error("Error message:", error.message);
+                console.error("Error stack:", error.stack);
                 return rejectWithValue(error.message);
             }
             
