@@ -13,6 +13,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Address is required' }, { status: 400 });
     }
 
+    const wallet = await prisma.deadMansWallet.findUnique({ where: { address } });
+
     // 1. Fetch AI profile
     const aiProfile = await prisma.aiProfile.findUnique({ where: { address } });
 
@@ -20,27 +22,70 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'AI not enabled or prompt missing' }, { status: 400 });
     }
 
+    // Fetch the wallet's beneficiaries
+    const beneficiaries = await prisma.beneficiary.findMany({ 
+      where: { walletId: wallet?.id } 
+    });
+
+    // Format beneficiary information to include in the prompt
+    const beneficiaryInfo = beneficiaries.map(b => `
+      Name: ${b.name}
+      Relationship: ${b.relationship || 'Not specified'}
+      Address: ${b.walletAddress}
+    `).join('\n');
+
+    const journal = await prisma.logEntry.findMany({ where: { walletId: wallet?.id } });
+
+    //format journal into a string
+    const journalString = journal.map(entry => entry.content).join('\n');
+
+    const systemPrompt = `You are an AI tasked with distributing funds to the beneficiaries of a dead man's wallet. You will be given a list of possible beneficiaries and a list of journal entries for the person that created the wallet. 
+
+BENEFICIARIES:
+${beneficiaryInfo || 'No beneficiaries specified'}
+
+IMPORTANT: You MUST return a valid JSON object with the following format:
+{
+  "beneficiaryAddress1": {
+    "amount": 50, // percentage as a number
+    "name": "John Doe" // beneficiary name
+  },
+  "beneficiaryAddress2": {
+    "amount": 50,
+    "name": "Jane Doe"
+  }
+}
+
+The sum of all percentages MUST equal 100. 
+
+ALLOCATION GUIDELINES:
+- No journal entries isn't necessarily a bad thing - allocate funds equally among beneficiaries if no other information is available.
+- Positive journal entries about a beneficiary should increase their allocation.
+- Negative journal entries about a beneficiary should decrease their allocation.
+- Focus more on rewarding positive mentions rather than penalizing lack of mentions.
+- Recent entries may carry more weight than older ones.
+
+This is what the user instructed you to do: ${aiProfile.prompt}
+
+JOURNAL ENTRIES:
+${journalString || 'No journal entries available'}`;
+
+
     // 2. Generate structured response via OpenAI
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       temperature: 0.3,
+      response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
-          content: aiProfile.prompt
+          content: systemPrompt
         }
       ]
     });
 
     const aiOutput = response.choices[0].message?.content || '';
 
-    // 3. Save result (optional: write to DB or file)
-    const output = await prisma.aiOutput.create({
-      data: {
-        address,
-        result: aiOutput,
-      }
-    });
 
     return NextResponse.json({ result: aiOutput });
   } catch (error) {

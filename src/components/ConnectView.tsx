@@ -26,25 +26,23 @@ export const ConnectView: React.FC<ConnectViewProps> = ({
       
       <div className="relative flex justify-center items-center py-4">
         <div className="relative">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 rounded-xl flex items-center justify-center bg-clip-padding p-[2px]">
-            <div className="w-full h-full rounded-[10px] bg-white dark:bg-gray-900 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600 dark:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-            </div>
+          <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gray-900 dark:bg-gray-800">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
           </div>
         </div>
         
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-700 to-transparent opacity-70"></div>
       </div>
       
-      <p className="text-center text-sm text-foreground-600 dark:text-gray-400 mb-3">
+      <p className="text-center text-sm text-gray-600 dark:text-gray-400 mb-2">
         Choose how you want to access your wallet
       </p>
 
       <div className="space-y-3">
         <ActionButton
-          className="w-full justify-center"
+          className="w-full justify-center text-sm h-10"
           onClick={onSignInClick}
           isLoading={loading}
           isDisabled={loading}
@@ -56,13 +54,13 @@ export const ConnectView: React.FC<ConnectViewProps> = ({
         </ActionButton>
 
         <div className="flex items-center gap-2 py-1">
-          <Divider className="flex-1 dark:bg-gray-700/60" />
-          <span className="text-xs text-foreground-500 dark:text-gray-400">or</span>
-          <Divider className="flex-1 dark:bg-gray-700/60" />
+          <Divider className="flex-1 bg-gray-200 dark:bg-gray-700/60" />
+          <span className="text-xs text-gray-500 dark:text-gray-400">or</span>
+          <Divider className="flex-1 bg-gray-200 dark:bg-gray-700/60" />
         </div>
 
         <SecondaryButton
-          className="w-full justify-center"
+          className="w-full justify-center text-sm h-10"
           onClick={onNewWalletClick}
           isDisabled={loading}
         >

@@ -27,12 +27,10 @@ export const RegisterView: React.FC<RegisterViewProps> = ({
       
       <div className="relative flex justify-center items-center py-4">
         <div className="relative">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 rounded-xl flex items-center justify-center bg-clip-padding p-[2px]">
-            <div className="w-full h-full rounded-[10px] bg-white dark:bg-gray-900 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600 dark:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
+          <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gray-900 dark:bg-gray-800">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
           </div>
         </div>
         
@@ -51,7 +49,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({
       </InfoBox>
 
       <div className="mt-1">
-        <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
           Wallet Name
         </label>
         <StyledTextField
@@ -63,18 +61,18 @@ export const RegisterView: React.FC<RegisterViewProps> = ({
           isClearable
           className="w-full"
           startContent={
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-foreground-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
           }
         />
-        <p className="text-xs text-foreground-500 dark:text-gray-400 mt-1.5">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
           This name will identify your wallet in your passkey manager
         </p>
       </div>
 
       <ActionButton
-        className="w-full justify-center mt-3"
+        className="w-full justify-center mt-3 text-sm h-10"
         onClick={onRegisterClick}
         isLoading={loading}
         isDisabled={loading || !passkeyName.trim()}

@@ -38,6 +38,7 @@ model DeadMansWallet {
   updatedAt          DateTime      @updatedAt
   useAiOption        Boolean       @default(true) // Default to AI option - required for beneficiary allocation
   beneficiaries      Beneficiary[]
+  logEntries         LogEntry[]    // Relation to log entries
 }
 
 model Beneficiary {
@@ -50,6 +51,17 @@ model Beneficiary {
   walletId        String
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+
+  @@index([walletId])
+}
+
+model LogEntry {
+  id            String         @id @default(cuid())
+  content       String         @db.Text
+  deadMansWallet DeadMansWallet @relation(fields: [walletId], references: [id])
+  walletId      String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([walletId])
 }

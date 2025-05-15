@@ -5,14 +5,15 @@ import {
   disconnectWallet, 
   WalletState,
   fundWallet,
-  getDeadMansWalletConfig
+  getDeadMansWalletConfig,
+  checkInDeadMansWallet
 } from '../store/walletSlice';
-import { Button, Divider, Spinner } from "@heroui/react";
-import { fundWithExplorer } from '../lib/passkey';
-import FundWithLaunchtube from './FundWithLaunchtube';
+import { Button, Spinner } from "@heroui/react";
 import DeadMansWallet from './DeadMansWallet';
+import LogEntries from './LogEntries';
 import { ActionButton, Badge, InfoBox, SecondaryButton, TabButton, TabContainer } from './StyledComponents';
 import { useDeadMansWallet } from '../hooks/useDeadMansWallet';
+import { toast } from 'react-toastify';
 
 const shortenAddress = (address: string) => {
   if (!address) return '';
@@ -28,14 +29,14 @@ const ConnectedWallet = () => {
   );
   const [addressCopied, setAddressCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('wallet');
+  const [checkingIn, setCheckingIn] = useState(false);
   
   const { 
     deadMansWallet,
     daysRemaining,
     isUrgent,
     timeExpired,
-    formatDate,
-    handleCheckIn
+    formatDate
   } = useDeadMansWallet();
 
   const isLocalWallet = contractId?.startsWith('LOCAL_');
@@ -80,7 +81,25 @@ const ConnectedWallet = () => {
     window.open(`https://testnet.steexp.com/account/${contractId}`, '_blank');
   };
 
-  // Dynamic color for check-in status
+  const handleCheckIn = async () => {
+    if (!deadMansWallet.isConfigured) {
+      toast.error("Dead Man's Wallet is not configured");
+      return;
+    }
+    
+    setCheckingIn(true);
+    try {
+      await dispatch(checkInDeadMansWallet() as any).unwrap();
+      toast.success("Successfully checked in");
+    } catch (error) {
+      console.error("Check-in error:", error);
+      toast.error("Failed to check in");
+    } finally {
+      setCheckingIn(false);
+    }
+  };
+
+  // Get check-in status color
   const getCheckInColor = () => {
     if (timeExpired) return 'danger';
     if (isUrgent) return 'warning';
@@ -88,6 +107,7 @@ const ConnectedWallet = () => {
     return 'default';
   };
   
+  // Get check-in status text
   const getCheckInStatus = () => {
     if (!deadMansWallet.isConfigured) return "Not Set";
     if (timeExpired) return "EXPIRED!";
@@ -96,307 +116,185 @@ const ConnectedWallet = () => {
   };
 
   return (
-    <div className="w-full">
-      <TabContainer className="mb-4">
+    <div className="w-full max-w-full">
+      <TabContainer className="mb-4 overflow-x-auto max-w-full flex no-scrollbar items-center justify-center">
         <TabButton active={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
           Wallet
         </TabButton>
-        {!isLocalWallet && (
-          <TabButton active={activeTab === 'dmw'} onClick={() => setActiveTab('dmw')}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        {!isLocalWallet && deadMansWallet.aiEnabled && (
+          <TabButton active={activeTab === 'logs'} onClick={() => setActiveTab('logs')}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
-            Dead Man's Switch
-            {!isLocalWallet && deadMansWallet.isConfigured && isUrgent && (
-              <span className="ml-1.5 w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
-            )}
-            {!isLocalWallet && deadMansWallet.isConfigured && timeExpired && (
-              <span className="ml-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-            )}
+            Journal
+          </TabButton>
+        )}
+        {!isLocalWallet && (
+          <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Settings
           </TabButton>
         )}
       </TabContainer>
       
-      {activeTab === 'wallet' ? (
+      {activeTab === 'wallet' && (
         <div className="space-y-4">
-          {/* Wallet Header with Custom Design */}
-          <div className="relative rounded-xl bg-gradient-to-r from-blue-600/10 to-indigo-600/10 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 pb-7 overflow-hidden">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm ring-2 ring-white/20 dark:ring-black/10">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-medium text-sm dark:text-white">Stellar Wallet</h3>
-                <div className="flex items-center mt-0.5">
-                  {isLocalWallet ? (
-                    <Badge color="warning">Offline</Badge>
-                  ) : (
-                    <Badge color="success">Testnet</Badge>
-                  )}
+          {/* Wallet Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+            {/* Wallet Header */}
+            <div className="bg-gray-50 dark:bg-gray-800/70 p-3 border-b border-gray-100 dark:border-gray-700/50">
+              <div className="flex justify-between items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">Stellar Wallet</p>
+                    <div className="flex items-center">
+                      {isLocalWallet ? (
+                        <Badge color="warning">Offline</Badge>
+                      ) : (
+                        <Badge color="success">Testnet</Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
+                <Button
+                  color="default"
+                  variant="light"
+                  size="sm"
+                  className="px-2 py-1 h-8 text-xs"
+                  onClick={handleDisconnect}
+                >
+                  Disconnect
+                </Button>
               </div>
             </div>
             
-            {/* SVG Decorations */}
-            <div className="absolute -bottom-6 -right-3 opacity-50">
-              <svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" className="text-indigo-600/20 dark:text-indigo-500/10">
-                <path d="M40 0 L75 19.6 L75 59 L40 80 L5 59 L5 19.6 Z" fill="none" stroke="currentColor" strokeWidth="2" />
-              </svg>
-            </div>
-            <div className="absolute -bottom-3 -left-3 opacity-30">
-              <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" className="text-blue-500/20 dark:text-blue-400/10">
-                <circle cx="30" cy="30" r="25" fill="none" stroke="currentColor" strokeWidth="2" />
-              </svg>
+            {/* Wallet Balance */}
+            <div className="p-3">
+              <div className="mb-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Balance</p>
+                <div className="flex items-baseline mt-1">
+                  {isLoading ? (
+                    <div className="flex items-center text-gray-500 dark:text-gray-400">
+                      <Spinner size="sm" className="mr-2" />
+                      <span>Loading...</span>
+                    </div>
+                  ) : isLocalWallet ? (
+                    <p className="text-gray-500 dark:text-gray-400">Not available</p>
+                  ) : (
+                    <>
+                      <span className="text-xl font-semibold">{balance || '0'}</span>
+                      <span className="ml-1 text-sm text-gray-500 dark:text-gray-400">XLM</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              
+              {/* Wallet Address */}
+              <div className="mt-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Wallet Address</p>
+                <div className="flex items-center">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-l-lg font-mono text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap border border-gray-100 dark:border-gray-700">
+                    {shortenAddress(contractId)}
+                  </div>
+                  <Button 
+                    size="sm" 
+                    color={addressCopied ? "success" : "default"}
+                    className="rounded-l-none text-xs h-9 px-2"
+                    onClick={handleCopyAddress}
+                  >
+                    {addressCopied ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+                
+                {!isLocalWallet && (
+                  <Button
+                    color="default"
+                    variant="flat"
+                    size="sm"
+                    className="mt-2 w-full text-xs h-8"
+                    onClick={openExplorer}
+                  >
+                    View on Explorer
+                  </Button>
+                )}
+              </div>
+              
+              {/* Check-in Status and Button */}
+              {!isLocalWallet && deadMansWallet.isConfigured && (
+                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                  <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Dead Man's Switch Status</p>
+                      <div className="flex items-center mt-1">
+                        <Badge color={getCheckInColor()}>
+                          {getCheckInStatus()}
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button
+                      color="primary"
+                      size="sm"
+                      className="text-xs h-8"
+                      onClick={handleCheckIn}
+                      isLoading={checkingIn}
+                    >
+                      Check In
+                    </Button>
+                  </div>
+                  
+                  {deadMansWallet.lastCheckIn && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Last check-in: {formatDate(deadMansWallet.lastCheckIn)}
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {/* Fund Wallet Button */}
+              {!isLocalWallet && (
+                <Button
+                  color="primary"
+                  variant="flat"
+                  className="mt-4 w-full text-xs h-9"
+                  onClick={handleFund}
+                  isLoading={isLoading}
+                >
+                  Fund Wallet with Test Tokens
+                </Button>
+              )}
             </div>
           </div>
-
-          {/* Status Messages */}
-          {isLocalWallet ? (
+          
+          {/* Instructions for Local Wallets */}
+          {isLocalWallet && (
             <InfoBox 
               color="warning"
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               }
             >
-              <div>
-                <p className="mb-2">This is a local wallet created while offline. It doesn't exist on the Stellar testnet.</p>
-                <SecondaryButton 
-                  size="sm"
-                  className="py-1 h-7 text-xs"
-                  onClick={handleDisconnect}
-                >
-                  Disconnect and Try Again
-                </SecondaryButton>
-              </div>
-            </InfoBox>
-          ) : (
-            <InfoBox 
-              color="success"
-              icon={
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              }
-            >
-              Your wallet is connected to the Stellar testnet.
+              This is a local wallet created while offline. Connect to the internet and create a new wallet to access all features.
             </InfoBox>
           )}
-
-          {/* Custom Grid Layout */}
-          <div className="grid grid-cols-6 gap-3 mt-3">
-            {/* Wallet Address - Full Width */}
-            <div className="col-span-6">
-              <p className="text-xs text-foreground-500 dark:text-gray-400 mb-1 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                </svg>
-                Wallet Address
-              </p>
-              <div className="flex items-center">
-                <div className="bg-white/70 dark:bg-gray-800/70 p-2 rounded-l-lg font-mono text-sm flex-1 break-all text-xs border-y border-l border-gray-200 dark:border-gray-700/50">
-                  {shortenAddress(contractId)}
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="flat"
-                  color={addressCopied ? "success" : "default"}
-                  className="rounded-l-none border border-gray-200 dark:border-gray-700/50 min-w-[64px] h-8"
-                  onClick={handleCopyAddress}
-                >
-                  {addressCopied ? (
-                    <span className="flex items-center text-xs">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Copied
-                    </span>
-                  ) : (
-                    <span className="text-xs">Copy</span>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Balance - Half Width */}
-            <div className="col-span-3">
-              <p className="text-xs text-foreground-500 dark:text-gray-400 mb-1 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Balance
-              </p>
-              <div className="backdrop-blur-sm bg-white/70 dark:bg-gray-800/70 p-2 rounded-lg border border-gray-200 dark:border-gray-700/50 flex items-center h-[40px]">
-                {isLoading ? (
-                  <div className="flex items-center text-foreground-600 dark:text-gray-400 text-sm">
-                    <Spinner size="sm" className="mr-2" />
-                    <span className="text-xs">Loading...</span>
-                  </div>
-                ) : isLocalWallet ? (
-                  <div className="text-foreground-600 dark:text-gray-400 font-mono text-xs">
-                    N/A
-                  </div>
-                ) : (
-                  <div className="font-mono text-base font-medium dark:text-white flex items-center">
-                    {balance || '0'} 
-                    <span className="ml-1 text-foreground-600 dark:text-gray-400 text-xs">XLM</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Status - Half Width */}
-            <div className="col-span-3">
-              <p className="text-xs text-foreground-500 dark:text-gray-400 mb-1 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                Status
-              </p>
-              <div className="backdrop-blur-sm bg-white/70 dark:bg-gray-800/70 p-2 rounded-lg border border-gray-200 dark:border-gray-700/50 flex items-center h-[40px]">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  <span className="text-xs dark:text-white">Active</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Check-in countdown - only for non-local wallets and if configured */}
-            {!isLocalWallet && (
-              <div className="col-span-6 mt-1">
-                <p className="text-xs text-foreground-500 dark:text-gray-400 mb-1 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Next Check-in
-                </p>
-                
-                <div className={`backdrop-blur-sm bg-white/70 dark:bg-gray-800/70 rounded-lg border ${
-                  deadMansWallet.isConfigured 
-                    ? timeExpired 
-                      ? 'border-red-300 dark:border-red-700/50'
-                      : isUrgent
-                        ? 'border-yellow-300 dark:border-yellow-700/50'
-                        : 'border-gray-200 dark:border-gray-700/50'
-                    : 'border-gray-200 dark:border-gray-700/50'
-                } overflow-hidden`}>
-                  <div className="flex items-center justify-between p-2">
-                    {!deadMansWallet.isConfigured ? (
-                      <div className="text-foreground-600 dark:text-gray-400 text-xs flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                        </svg>
-                        Not configured
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center">
-                          <Badge color={getCheckInColor()}>
-                            {getCheckInStatus()}
-                          </Badge>
-                          <span className="ml-3 text-xs dark:text-gray-300">
-                            {formatDate(deadMansWallet.nextCheckInDeadline)}
-                          </span>
-                        </div>
-                        <Button
-                          size="sm"
-                          color="primary"
-                          variant="flat" 
-                          className="py-0 h-7 text-xs"
-                          onClick={handleCheckIn}
-                        >
-                          Check In
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                  
-                  {/* Progress bar for check-in period */}
-                  {deadMansWallet.isConfigured && (
-                    <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700">
-                      <div 
-                        className={`h-full ${
-                          timeExpired 
-                            ? 'bg-red-500' 
-                            : isUrgent 
-                              ? 'bg-yellow-500' 
-                              : 'bg-blue-500'
-                        }`}
-                        style={{ 
-                          width: `${
-                            timeExpired 
-                              ? '100' 
-                              : Math.max(0, 100 - (daysRemaining / deadMansWallet.checkInPeriod * 100))
-                          }%` 
-                        }}
-                      ></div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Funding Options - only for non-local wallets */}
-          {!isLocalWallet && (
-            <div className="pt-2 pb-1">
-              <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700/50">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 px-3 py-1.5">
-                  <h3 className="text-xs font-medium text-blue-800 dark:text-blue-300 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Fund Your Wallet
-                  </h3>
-                </div>
-                <div className="p-3 bg-white dark:bg-gray-800/50">
-                  <FundWithLaunchtube />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Custom Actions Footer */}
-          <div className="flex justify-between pt-3 border-t border-gray-200 dark:border-gray-800/60">
-            <Button 
-              variant="flat"
-              className="text-red-500 dark:text-red-400 border border-red-200 dark:border-red-900/30 dark:bg-red-900/10 text-xs h-8"
-              onClick={handleDisconnect}
-              startContent={
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              }
-            >
-              Disconnect
-            </Button>
-            
-            {!isLocalWallet && (
-              <Button
-                variant="flat"
-                className="border border-blue-200 dark:border-blue-900/30 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 text-xs h-8"
-                onClick={openExplorer}
-                startContent={
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                }
-              >
-                View Explorer
-              </Button>
-            )}
-          </div>
         </div>
-      ) : (
-        // Show Dead Man's Wallet if tab is selected and not a local wallet
-        !isLocalWallet && <DeadMansWallet />
       )}
+      
+      {activeTab === 'logs' && <LogEntries />}
+      
+      {activeTab === 'settings' && <DeadMansWallet />}
     </div>
   );
 };
