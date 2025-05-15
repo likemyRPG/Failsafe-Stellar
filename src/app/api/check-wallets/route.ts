@@ -11,7 +11,7 @@ const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 // Get contract ID from environment variable
 const CONTRACT_ID = process.env.CONTRACT_ID || broke_contract.options.contractId;
 // Get secret key from environment variable
-const SERVER_SECRET_KEY = process.env.SERVER_SECRET_KEY || 'SC2MBZU44X54GVZCCGUM6A3ANFGTESKYEF4EMH2EGL4BS32GPIOZLYCE';
+const SERVER_SECRET_KEY = process.env.SERVER_SECRET_KEY;
 
 // Function to log events and store them in the database
 
