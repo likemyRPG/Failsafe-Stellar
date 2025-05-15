@@ -24,10 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased dark:bg-[#0d1117] min-h-screen text-foreground dark:text-white`}
       >
+        <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(35,70,156,0.15),transparent_25%),radial-gradient(circle_at_left,rgba(93,30,152,0.1),transparent_25%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(35,70,156,0.15),transparent_40%),radial-gradient(circle_at_left,rgba(93,30,152,0.15),transparent_40%)]"></div>
         <Providers>
           {children}
         </Providers>

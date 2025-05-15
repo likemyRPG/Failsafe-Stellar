@@ -1,5 +1,6 @@
 import React from "react";
-import { Button, Divider } from "@heroui/react";
+import { Divider } from "@heroui/react";
+import { ActionButton, BackButton, SecondaryButton } from "./StyledComponents";
 
 type ConnectViewProps = {
   loading: boolean;
@@ -15,51 +16,61 @@ export const ConnectView: React.FC<ConnectViewProps> = ({
   onBackClick,
 }) => {
   return (
-    <div className="flex flex-col space-y-6">
-      <div className="text-center">
-        <h1 className="text-xl font-bold mb-2">Access Your Dead Man's Wallet</h1>
-        <p className="text-default-500 text-sm">
-          Choose how you want to continue
-        </p>
+    <div className="flex flex-col w-full gap-3">
+      <BackButton onClick={onBackClick} isDisabled={loading} className="mb-1">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back
+      </BackButton>
+      
+      <div className="relative flex justify-center items-center py-4">
+        <div className="relative">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 rounded-xl flex items-center justify-center bg-clip-padding p-[2px]">
+            <div className="w-full h-full rounded-[10px] bg-white dark:bg-gray-900 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600 dark:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-700 to-transparent opacity-70"></div>
       </div>
+      
+      <p className="text-center text-sm text-foreground-600 dark:text-gray-400 mb-3">
+        Choose how you want to access your wallet
+      </p>
 
-      <div className="space-y-4">
-        <Button
-          color="primary"
-          className="w-full"
+      <div className="space-y-3">
+        <ActionButton
+          className="w-full justify-center"
           onClick={onSignInClick}
           isLoading={loading}
           isDisabled={loading}
         >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
           Sign in with existing wallet
-        </Button>
+        </ActionButton>
 
-        <div className="flex items-center gap-4 px-2 py-2">
-          <Divider className="flex-1" />
-          <span className="text-sm text-default-500">or</span>
-          <Divider className="flex-1" />
+        <div className="flex items-center gap-2 py-1">
+          <Divider className="flex-1 dark:bg-gray-700/60" />
+          <span className="text-xs text-foreground-500 dark:text-gray-400">or</span>
+          <Divider className="flex-1 dark:bg-gray-700/60" />
         </div>
 
-        <Button
-          color="secondary"
-          variant="flat"
-          className="w-full"
+        <SecondaryButton
+          className="w-full justify-center"
           onClick={onNewWalletClick}
           isDisabled={loading}
         >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
           Create new wallet
-        </Button>
-      </div>
-
-      <div className="pt-4">
-        <Button
-          variant="light"
-          className="w-full"
-          onClick={onBackClick}
-          isDisabled={loading}
-        >
-          Go back
-        </Button>
+        </SecondaryButton>
       </div>
     </div>
   );

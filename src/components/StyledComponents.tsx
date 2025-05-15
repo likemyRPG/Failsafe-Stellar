@@ -5,8 +5,8 @@ import React, { ReactNode } from "react";
 export const StyledTextField = ({ ...props }: React.ComponentProps<typeof Input>) => (
     <Input 
         {...props}
-        className="bg-background rounded-xl"
-        radius="lg"
+        className="bg-transparent dark:bg-transparent border-1 border-gray-300 dark:border-gray-700 rounded-lg"
+        radius="md"
         variant="bordered"
     />
 );
@@ -14,9 +14,8 @@ export const StyledTextField = ({ ...props }: React.ComponentProps<typeof Input>
 export const ActionButton = ({ children, ...props }: React.ComponentProps<typeof Button> & { children: ReactNode }) => (
     <Button
         {...props}
-        className="flex items-center gap-2 bg-primary text-primary-foreground rounded-xl py-3"
-        color="primary"
-        radius="lg"
+        className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg py-2 transition-all"
+        radius="md"
     >
         {children}
     </Button>
@@ -25,16 +24,21 @@ export const ActionButton = ({ children, ...props }: React.ComponentProps<typeof
 export const SecondaryButton = ({ children, ...props }: React.ComponentProps<typeof Button> & { children: ReactNode }) => (
     <Button
         {...props}
-        className="bg-secondary text-foreground rounded-xl py-3"
-        color="secondary"
-        radius="lg"
+        className="bg-transparent text-foreground dark:text-gray-300 rounded-lg py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+        radius="md"
     >
         {children}
     </Button>
 );
 
 export const StyledPaper = ({ children }: { children: ReactNode }) => (
-    <div className="p-6 flex flex-col items-center gap-4 bg-background rounded-2xl w-[400px] mx-auto shadow-md">
+    <div className="flex flex-col items-center gap-5 w-full max-w-[440px] mx-auto">
+        {children}
+    </div>
+);
+
+export const CardContainer = ({ children, className = "" }: { children: ReactNode, className?: string }) => (
+    <div className={`p-5 flex flex-col gap-4 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-gray-800 ${className}`}>
         {children}
     </div>
 );
@@ -42,7 +46,7 @@ export const StyledPaper = ({ children }: { children: ReactNode }) => (
 export const BackButton = ({ children, ...props }: React.ComponentProps<typeof Button> & { children: ReactNode }) => (
     <Button
         {...props}
-        className="self-start text-foreground-500 hover:bg-transparent hover:text-foreground"
+        className="self-start text-foreground-500 dark:text-gray-400 hover:bg-transparent hover:text-foreground dark:hover:text-white p-0 h-auto min-w-0"
         variant="light"
     >
         {children}
@@ -53,9 +57,77 @@ export const WhiteIconButton = ({ children, ...props }: React.ComponentProps<typ
     <Button
         {...props}
         isIconOnly
-        className="text-white"
+        className="text-foreground dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
         variant="light"
+        size="sm"
     >
         {children}
     </Button>
 );
+
+export const GradientText = ({ children, className = "" }: { children: ReactNode, className?: string }) => (
+    <span className={`bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 ${className}`}>
+        {children}
+    </span>
+);
+
+export const TabContainer = ({ children, className = "" }: { children: ReactNode, className?: string }) => (
+    <div className={`flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800/60 rounded-lg ${className}`}>
+        {children}
+    </div>
+);
+
+export const TabButton = ({ children, active = false, ...props }: React.ComponentProps<typeof Button> & { children: ReactNode, active?: boolean }) => (
+    <Button
+        {...props}
+        className={`${active ? 'bg-white dark:bg-gray-700 shadow-sm' : 'bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700/70'} text-sm font-medium py-1.5 px-3 rounded-md transition-all`}
+        size="sm"
+        variant="flat"
+    >
+        {children}
+    </Button>
+);
+
+export const SectionHeader = ({ children }: { children: ReactNode }) => (
+    <h2 className="text-lg font-medium dark:text-white flex items-center gap-2">
+        {children}
+    </h2>
+);
+
+export const Badge = ({ children, color = "default" }: { children: ReactNode, color?: "default" | "primary" | "success" | "warning" | "danger" }) => {
+    const colorClasses = {
+        default: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200",
+        primary: "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300",
+        success: "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300",
+        warning: "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300",
+        danger: "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300"
+    };
+    
+    return (
+        <span className={`px-2 py-0.5 text-xs font-medium rounded-md ${colorClasses[color]}`}>
+            {children}
+        </span>
+    );
+};
+
+export const InfoBox = ({ children, color = "default", icon }: { children: ReactNode, color?: "default" | "primary" | "success" | "warning" | "danger", icon?: ReactNode }) => {
+    const colorClasses = {
+        default: "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700/50 text-gray-700 dark:text-gray-300",
+        primary: "bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 text-blue-800 dark:text-blue-300",
+        success: "bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-900/30 text-green-800 dark:text-green-300",
+        warning: "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-100 dark:border-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+        danger: "bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30 text-red-800 dark:text-red-300"
+    };
+    
+    return (
+        <div className={`p-3 rounded-lg border ${colorClasses[color]} text-sm`}>
+            {icon && (
+                <div className="flex items-start">
+                    <div className="mt-0.5 mr-2 flex-shrink-0">{icon}</div>
+                    <div>{children}</div>
+                </div>
+            )}
+            {!icon && children}
+        </div>
+    );
+};
