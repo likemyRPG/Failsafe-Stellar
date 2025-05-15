@@ -3,15 +3,17 @@
 use soroban_sdk::{
     // Soroban SDK (22.0.x) in no_std mode
     contract, contractimpl, contracttype,
-    token,
-    Address, Env, Bytes,
+    symbol_short, token,
+    Address, Env, Vec, Symbol,
 };
 
-// -----------------------------------------------------------------------------
-// 1) We need a contract address for the token in 22.0.x. We will put the correct address here.
+// Replace with your actual 32-byte token contract ID:
 const TOKEN_CONTRACT_ID: &str = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2RGCBQYD";
 
-// 2) We'll store each user's data in the contract's persistent storage.
+// We can't store a &str as key in 22.0.x, so let's define a Symbol constant:
+const REGISTERED_USERS_KEY: Symbol = symbol_short!("registry");
+
+/// Data stored for each user.
 #[contracttype]
 #[derive(Clone)]
 pub struct UserData {
@@ -23,7 +25,7 @@ pub struct UserData {
     pub finalized: bool,
 }
 
-// Simple helpers for load/save:
+/// Load/store user data keyed by their address.
 fn load_user_data(env: &Env, user: &Address) -> Option<UserData> {
     env.storage().persistent().get(user)
 }
@@ -32,19 +34,40 @@ fn save_user_data(env: &Env, user: &Address, data: &UserData) {
     env.storage().persistent().set(user, data);
 }
 
-// -----------------------------------------------------------------------------
-// Mark this as the contract with `#[contract]`.
+/// Load/store a global registry of user addresses. We use `REGISTERED_USERS_KEY` (a Symbol).
+fn load_registry(env: &Env) -> Vec<Address> {
+    // No `unwrap_or_default()`, so do `unwrap_or_else(...)`.
+    env.storage()
+        .persistent()
+        .get::<Symbol, Vec<Address>>(&REGISTERED_USERS_KEY)
+        .unwrap_or_else(|| Vec::new(env))
+}
+
+fn save_registry(env: &Env, registry: &Vec<Address>) {
+    env.storage()
+        .persistent()
+        .set(&REGISTERED_USERS_KEY, registry);
+}
+
 #[contract]
 pub struct DeadMansWallet;
 
-// -----------------------------------------------------------------------------
-// Implement contract logic with `#[contractimpl]` so the auto-generated
-// client code (`DeadMansWalletClient`, etc.) works correctly.
 #[contractimpl]
 impl DeadMansWallet {
-    // (A) Register: user sets beneficiary + timeouts
-    //     In 22.0.x, we rely on transaction-level signatures to restrict access.
+    /// Register a user with beneficiary, timeouts, etc.
     pub fn register(env: Env, user: Address, beneficiary: Address, timeout: u64, revive_window: u64) {
+        // Validate inputs
+        if timeout == 0 {
+            panic!("Timeout cannot be zero");
+        }
+        if revive_window == 0 {
+            panic!("Revive window cannot be zero");
+        }
+        // Disallow re-registration
+        if load_user_data(&env, &user).is_some() {
+            panic!("User is already registered.");
+        }
+
         let now = env.ledger().timestamp();
         let data = UserData {
             beneficiary,
@@ -55,19 +78,32 @@ impl DeadMansWallet {
             finalized: false,
         };
         save_user_data(&env, &user, &data);
+
+        // Add user to registry if not present
+        let mut registry = load_registry(&env);
+        if !registry.contains(&user) {
+            registry.push_back(user.clone());
+            save_registry(&env, &registry);
+        }
+
+        // Emit event
+        env.events().publish((symbol_short!("register"), user.clone()), data.timeout);
     }
 
-    // (B) Check-in: user updates `last_checkin`.
+    /// Check-in updates last_checkin
     pub fn check_in(env: Env, user: Address) {
         let mut data = load_user_data(&env, &user).expect("User not registered");
         if data.finalized {
-            panic!("Already finalized.");
+            panic!("User is already finalized.");
         }
+
         data.last_checkin = env.ledger().timestamp();
         save_user_data(&env, &user, &data);
+
+        env.events().publish((symbol_short!("check_in"), user.clone()), data.last_checkin);
     }
 
-    // (C) Trigger: ANYONE can call if user is inactive beyond `timeout`.
+    /// Trigger if user is inactive
     pub fn trigger(env: Env, user: Address) {
         let mut data = load_user_data(&env, &user).expect("User not registered");
         if data.finalized {
@@ -76,27 +112,33 @@ impl DeadMansWallet {
         if data.triggered_at.is_some() {
             panic!("Already triggered.");
         }
+
         let now = env.ledger().timestamp();
         if now <= data.last_checkin + data.timeout {
             panic!("User is still active.");
         }
+
         data.triggered_at = Some(now);
         save_user_data(&env, &user, &data);
+
+        env.events().publish((symbol_short!("trigger"), user.clone()), now);
     }
 
-    // (D) Revive: user can cancel the trigger if within `revive_window`.
+    /// Revive if within the window
     pub fn revive(env: Env, user: Address) {
         let mut data = load_user_data(&env, &user).expect("User not registered");
         if data.finalized {
             panic!("Already finalized.");
         }
+
         let now = env.ledger().timestamp();
         match data.triggered_at {
-            None => panic!("Not triggered, nothing to revive."),
+            None => panic!("Not triggered; nothing to revive."),
             Some(t) => {
                 if now <= t + data.revive_window {
                     data.triggered_at = None;
                     save_user_data(&env, &user, &data);
+                    env.events().publish((symbol_short!("revive"), user.clone()), now);
                 } else {
                     panic!("Revive window passed.");
                 }
@@ -104,26 +146,53 @@ impl DeadMansWallet {
         }
     }
 
-    // (E) Finalize: after the revive window, ANYONE can finalize (transfer funds).
+    /// Finalize after the window, transferring user's funds to the beneficiary
     pub fn finalize(env: Env, user: Address, amount: i128) {
         let mut data = load_user_data(&env, &user).expect("User not registered");
         if data.finalized {
             panic!("Already finalized.");
         }
+
         let now = env.ledger().timestamp();
         let triggered_at = data.triggered_at.expect("User not triggered.");
         if now < triggered_at + data.revive_window {
             panic!("Revival window not yet passed.");
         }
 
-        // Create Address directly from string
         let token_addr = Address::from_str(&env, TOKEN_CONTRACT_ID);
-
         let token_client = token::Client::new(&env, &token_addr);
-        // Transfer from user -> beneficiary
         token_client.transfer(&user, &data.beneficiary, &amount);
 
         data.finalized = true;
         save_user_data(&env, &user, &data);
+
+        // Use a short symbol for the AI event to avoid the 9-char limit
+        env.events().publish((symbol_short!("finalize"), user.clone()), amount);
+        env.events().publish((symbol_short!("aiSig"), user.clone()), data.beneficiary.clone());
+    }
+
+    // Return the user's stored data (if any)
+    pub fn get_user_data(env: Env, user: Address) -> Option<UserData> {
+        load_user_data(&env, &user)
+    }
+
+    // Return the entire registry of addresses
+    pub fn list_users(env: Env) -> Vec<Address> {
+        load_registry(&env)
+    }
+
+    pub fn get_status(env: Env, user: Address) -> Symbol {
+        match load_user_data(&env, &user) {
+            None => symbol_short!("none"),
+            Some(data) => {
+                if data.finalized {
+                    symbol_short!("finalized")
+                } else if data.triggered_at.is_some() {
+                    symbol_short!("triggered")
+                } else {
+                    symbol_short!("active")
+                }
+            }
+        }
     }
 }
