@@ -162,7 +162,7 @@ const ConnectedWallet = () => {
                       {isLocalWallet ? (
                         <Badge color="warning">Offline</Badge>
                       ) : (
-                        <Badge color="success">Testnet</Badge>
+                        <button onClick={handleFund}><Badge color="success">Testnet</Badge></button>
                       )}
                     </div>
                   </div>
@@ -261,18 +261,6 @@ const ConnectedWallet = () => {
                 </div>
               )}
               
-              {/* Fund Wallet Button */}
-              {!isLocalWallet && (
-                <Button
-                  color="primary"
-                  variant="flat"
-                  className="mt-4 w-full text-xs h-9"
-                  onClick={handleFund}
-                  isLoading={isLoading}
-                >
-                  Fund Wallet with Test Tokens
-                </Button>
-              )}
             </div>
           </div>
           

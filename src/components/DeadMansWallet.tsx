@@ -144,7 +144,8 @@ const DeadMansWallet: React.FC = () => {
       }
     }
 
-    if (!newCheckInPeriod || parseInt(newCheckInPeriod) < 1) {
+    // For initial setup only, validate check-in period
+    if (!deadMansWallet.isConfigured && (!newCheckInPeriod || parseInt(newCheckInPeriod) < 1)) {
       toast.error("Please enter a valid check-in period (minimum 1 day)");
       return;
     }
@@ -153,7 +154,7 @@ const DeadMansWallet: React.FC = () => {
       // Configure dead man's wallet on the blockchain
       await dispatch(configureDeadMansWallet({
         destinationAddress: useAiOption ? null : newDestinationAddress,
-        checkInPeriod: parseInt(newCheckInPeriod),
+        checkInPeriod: deadMansWallet.isConfigured ? deadMansWallet.checkInPeriod : parseInt(newCheckInPeriod),
         aiEnabled,
         aiPrompt: aiEnabled ? aiPrompt : null,
         useAiOption,
@@ -459,8 +460,8 @@ const DeadMansWallet: React.FC = () => {
         )}
 
         {/* Configuration Modal */}
-        <Modal isOpen={isOpen} onClose={onClose} className="backdrop-blur-sm">
-          <ModalContent className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800/60 rounded-xl shadow-xl dark:shadow-black/40">
+        <Modal isOpen={isOpen} onClose={onClose} className="backdrop-blur-sm" scrollBehavior="inside" size="full">
+          <ModalContent className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800/60 rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-md mx-auto">
             <ModalHeader className="border-b border-gray-200 dark:border-gray-800/60 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-t-xl">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md flex items-center justify-center">
@@ -481,18 +482,26 @@ const DeadMansWallet: React.FC = () => {
                     </svg>
                     Check-in Period (days)
                   </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={365}
-                    placeholder="Days between check-ins"
-                    value={newCheckInPeriod}
-                    onChange={(e) => setNewCheckInPeriod(e.target.value)}
-                    className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
-                    variant="bordered"
-                  />
+                  {deadMansWallet.isConfigured ? (
+                    <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg text-sm border border-gray-300 dark:border-gray-700">
+                      {newCheckInPeriod} {Number(newCheckInPeriod) === 1 ? 'day' : 'days'}
+                    </div>
+                  ) : (
+                    <Input
+                      type="number"
+                      min={1}
+                      max={365}
+                      placeholder="Days between check-ins"
+                      value={newCheckInPeriod}
+                      onChange={(e) => setNewCheckInPeriod(e.target.value)}
+                      className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
+                      variant="bordered"
+                    />
+                  )}
                   <p className="mt-1.5 text-xs text-foreground-500 dark:text-gray-400 pl-5">
-                    You must confirm you're alive within this many days
+                    {deadMansWallet.isConfigured 
+                      ? "" 
+                      : "You must confirm you're alive within this many days"}
                   </p>
                 </div>
                 
@@ -561,46 +570,48 @@ const DeadMansWallet: React.FC = () => {
                       </div>
                       
                       {beneficiaries.length > 0 ? (
-                        <Table 
-                          aria-label="Beneficiaries table"
-                          className="mt-2 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-                          removeWrapper
-                        >
-                          <TableHeader>
-                            <TableColumn>NAME</TableColumn>
-                            <TableColumn>ADDRESS</TableColumn>
-                            <TableColumn width={100}>ACTIONS</TableColumn>
-                          </TableHeader>
-                          <TableBody>
-                            {beneficiaries.map((beneficiary, index) => (
-                              <TableRow key={index}>
-                                <TableCell>
-                                  <div>
-                                    <p className="text-sm font-medium">{beneficiary.name}</p>
-                                    {beneficiary.relationship && (
-                                      <p className="text-xs text-gray-500">{beneficiary.relationship}</p>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <p className="text-xs font-mono overflow-hidden text-ellipsis">
-                                    {beneficiary.walletAddress}
-                                  </p>
-                                </TableCell>
-                                <TableCell>
-                                  <Button
-                                    size="sm"
-                                    className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30"
-                                    onClick={() => handleRemoveBeneficiary(index)}
-                                    variant="flat"
-                                  >
-                                    Remove
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                        <div className="overflow-x-auto -mx-2 px-2">
+                          <Table 
+                            aria-label="Beneficiaries table"
+                            className="mt-2 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden w-full min-w-[300px]"
+                            removeWrapper
+                          >
+                            <TableHeader>
+                              <TableColumn>NAME</TableColumn>
+                              <TableColumn>ADDRESS</TableColumn>
+                              <TableColumn width={80}>ACTIONS</TableColumn>
+                            </TableHeader>
+                            <TableBody>
+                              {beneficiaries.map((beneficiary, index) => (
+                                <TableRow key={index}>
+                                  <TableCell className="py-2">
+                                    <div>
+                                      <p className="text-sm font-medium">{beneficiary.name}</p>
+                                      {beneficiary.relationship && (
+                                        <p className="text-xs text-gray-500">{beneficiary.relationship}</p>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <p className="text-xs font-mono overflow-hidden text-ellipsis max-w-[150px] truncate">
+                                      {beneficiary.walletAddress}
+                                    </p>
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <Button
+                                      size="sm"
+                                      className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30 min-w-0 p-1"
+                                      onClick={() => handleRemoveBeneficiary(index)}
+                                      variant="flat"
+                                    >
+                                      Remove
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       ) : (
                         <div className="text-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                           <p className="text-sm text-gray-500 dark:text-gray-400">No beneficiaries added yet.</p>
@@ -657,7 +668,7 @@ const DeadMansWallet: React.FC = () => {
                             placeholder="Enter instructions for the AI to follow when your wallet expires"
                             value={aiPrompt}
                             onChange={(e) => setAiPrompt(e.target.value)}
-                            className="w-full h-24 bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm p-2"
+                            className="w-full min-h-[80px] bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm p-2 resize-y"
                           />
                           <div className="flex justify-end mt-1">
                             <Button
@@ -699,10 +710,10 @@ const DeadMansWallet: React.FC = () => {
                 </div>
               </div>
             </ModalBody>
-            <ModalFooter className="border-t border-gray-200 dark:border-gray-800/60 gap-2">
+            <ModalFooter className="border-t border-gray-200 dark:border-gray-800/60 gap-2 flex-wrap">
               <Button 
                 variant="flat"
-                className="border border-red-200 dark:border-red-900/30 text-red-500 dark:text-red-400 dark:bg-red-900/10 text-xs py-1"
+                className="border border-red-200 dark:border-red-900/30 text-red-500 dark:text-red-400 dark:bg-red-900/10 text-xs py-1 flex-1 min-w-0"
                 onClick={onClose}
                 size="sm"
               >
@@ -710,7 +721,7 @@ const DeadMansWallet: React.FC = () => {
               </Button>
               <Button 
                 variant="solid"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1 flex-1 min-w-0"
                 onClick={handleSaveSettings}
                 isLoading={isLoading}
                 size="sm"
@@ -722,8 +733,8 @@ const DeadMansWallet: React.FC = () => {
         </Modal>
         
         {/* Add Beneficiary Modal */}
-        <Modal isOpen={isAddBeneficiaryOpen} onClose={onCloseAddBeneficiary} className="backdrop-blur-sm">
-          <ModalContent className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800/60 rounded-xl shadow-xl dark:shadow-black/40">
+        <Modal isOpen={isAddBeneficiaryOpen} onClose={onCloseAddBeneficiary} className="backdrop-blur-sm" size="full">
+          <ModalContent className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800/60 rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-md mx-auto">
             <ModalHeader className="border-b border-gray-200 dark:border-gray-800/60 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-t-xl">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md flex items-center justify-center">
@@ -779,10 +790,10 @@ const DeadMansWallet: React.FC = () => {
                 </div>
               </div>
             </ModalBody>
-            <ModalFooter className="border-t border-gray-200 dark:border-gray-800/60 gap-2">
+            <ModalFooter className="border-t border-gray-200 dark:border-gray-800/60 gap-2 flex-wrap">
               <Button 
                 variant="flat"
-                className="border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs py-1"
+                className="border border-red-200 dark:border-red-900/30 text-red-500 dark:text-red-400 dark:bg-red-900/10 text-xs py-1 flex-1 min-w-0"
                 onClick={onCloseAddBeneficiary}
                 size="sm"
               >
@@ -790,7 +801,7 @@ const DeadMansWallet: React.FC = () => {
               </Button>
               <Button 
                 variant="solid"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1 flex-1 min-w-0"
                 onClick={handleAddBeneficiary}
                 size="sm"
               >
