@@ -1,0 +1,26 @@
+# Rust build directory
+/target/
+
+# Rust generated files
+**/*.rs.bk
+Cargo.lock
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Soroban specific
+.stellar/
+
+# Environment files
+.env
+.env.local
+
+# Debug files
+*.pdb
+
+# OS specific files
+.DS_Store
+Thumbs.db 
