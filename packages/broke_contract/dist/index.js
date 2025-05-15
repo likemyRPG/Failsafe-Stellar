@@ -10,7 +10,7 @@ if (typeof window !== 'undefined') {
 export const networks = {
     testnet: {
         networkPassphrase: "Test SDF Network ; September 2015",
-        contractId: "CASK735YX6SE3XIMCF6TJOMUW32D262RVN2AGAIRFRPHUJI4YXZDGGAB",
+        contractId: "CAGY624X5A4I5QZ7RVPXWKBPE2KPUMIVTXOUSL2DFY5OO3Y3QGJBNICJ",
     }
 };
 export const Errors = {};
@@ -29,7 +29,8 @@ export class Client extends ContractClient {
             "AAAAAAAAABtSZXZpdmUgaWYgd2l0aGluIHRoZSB3aW5kb3cAAAAABnJldml2ZQAAAAAAAQAAAAAAAAAEdXNlcgAAABMAAAAA",
             "AAAAAAAAAEdGaW5hbGl6ZSBhZnRlciB0aGUgd2luZG93LCB0cmFuc2ZlcnJpbmcgdXNlcidzIGZ1bmRzIHRvIHRoZSBiZW5lZmljaWFyeQAAAAAIZmluYWxpemUAAAACAAAAAAAAAAR1c2VyAAAAEwAAAAAAAAAGYW1vdW50AAAAAAALAAAAAA==",
             "AAAAAAAAAAAAAAANZ2V0X3VzZXJfZGF0YQAAAAAAAAEAAAAAAAAABHVzZXIAAAATAAAAAQAAA+gAAAfQAAAACFVzZXJEYXRh",
-            "AAAAAAAAAAAAAAAKbGlzdF91c2VycwAAAAAAAAAAAAEAAAPqAAAAEw=="]), options);
+            "AAAAAAAAAAAAAAAKbGlzdF91c2VycwAAAAAAAAAAAAEAAAPqAAAAEw==",
+            "AAAAAAAAAAAAAAAKZ2V0X3N0YXR1cwAAAAAAAQAAAAAAAAAEdXNlcgAAABMAAAABAAAAEQ=="]), options);
         this.options = options;
     }
     fromJSON = {
@@ -39,6 +40,7 @@ export class Client extends ContractClient {
         revive: (this.txFromJSON),
         finalize: (this.txFromJSON),
         get_user_data: (this.txFromJSON),
-        list_users: (this.txFromJSON)
+        list_users: (this.txFromJSON),
+        get_status: (this.txFromJSON)
     };
 }

@@ -7,7 +7,7 @@ export * as rpc from '@stellar/stellar-sdk/rpc';
 export declare const networks: {
     readonly testnet: {
         readonly networkPassphrase: "Test SDF Network ; September 2015";
-        readonly contractId: "CASK735YX6SE3XIMCF6TJOMUW32D262RVN2AGAIRFRPHUJI4YXZDGGAB";
+        readonly contractId: "CAGY624X5A4I5QZ7RVPXWKBPE2KPUMIVTXOUSL2DFY5OO3Y3QGJBNICJ";
     };
 };
 /**
@@ -163,6 +163,25 @@ export interface Client {
          */
         simulate?: boolean;
     }) => Promise<AssembledTransaction<Array<string>>>;
+    /**
+     * Construct and simulate a get_status transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    get_status: ({ user }: {
+        user: string;
+    }, options?: {
+        /**
+         * The fee to pay for the transaction. Default: BASE_FEE
+         */
+        fee?: number;
+        /**
+         * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+         */
+        timeoutInSeconds?: number;
+        /**
+         * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+         */
+        simulate?: boolean;
+    }) => Promise<AssembledTransaction<string>>;
 }
 export declare class Client extends ContractClient {
     readonly options: ContractClientOptions;
@@ -185,5 +204,6 @@ export declare class Client extends ContractClient {
         finalize: (json: string) => AssembledTransaction<null>;
         get_user_data: (json: string) => AssembledTransaction<Option<UserData>>;
         list_users: (json: string) => AssembledTransaction<string[]>;
+        get_status: (json: string) => AssembledTransaction<string>;
     };
 }
