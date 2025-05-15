@@ -171,6 +171,52 @@ impl DeadMansWallet {
         env.events().publish((symbol_short!("aiSig"), user.clone()), data.beneficiary.clone());
     }
 
+    /// Finalize with multiple beneficiaries determined by admin/AI
+    /// This allows distributing funds to multiple beneficiaries with different percentages
+    pub fn finalize_admin(env: Env, user: Address, beneficiaries: Vec<Address>, amounts: Vec<i128>) {
+        // Validate inputs
+        if beneficiaries.len() != amounts.len() {
+            panic!("Beneficiaries and amounts must have the same length");
+        }
+        if beneficiaries.len() == 0 {
+            panic!("At least one beneficiary is required");
+        }
+
+        let mut data = load_user_data(&env, &user).expect("User not registered");
+        if data.finalized {
+            panic!("Already finalized.");
+        }
+
+        let now = env.ledger().timestamp();
+        let triggered_at = data.triggered_at.expect("User not triggered.");
+        if now < triggered_at + data.revive_window {
+            panic!("Revival window not yet passed.");
+        }
+
+        // Transfer funds to each beneficiary
+        let token_addr = Address::from_str(&env, TOKEN_CONTRACT_ID);
+        let token_client = token::Client::new(&env, &token_addr);
+        
+        // Iterate through beneficiaries and amounts
+        for i in 0..beneficiaries.len() {
+            if amounts.get(i).unwrap() > &0 {
+                token_client.transfer(&user, &beneficiaries.get(i).unwrap(), &amounts.get(i).unwrap());
+            }
+        }
+
+        data.finalized = true;
+        save_user_data(&env, &user, &data);
+
+        // Emit events
+        env.events().publish((symbol_short!("finAdm"), user.clone()), beneficiaries.len());
+        for i in 0..beneficiaries.len() {
+            env.events().publish(
+                (symbol_short!("dist"), user.clone()), 
+                (beneficiaries.get(i).unwrap().clone(), amounts.get(i).unwrap())
+            );
+        }
+    }
+
     // Return the user's stored data (if any)
     pub fn get_user_data(env: Env, user: Address) -> Option<UserData> {
         load_user_data(&env, &user)
