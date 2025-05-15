@@ -19,6 +19,13 @@ model AiProfile {
   updatedAt DateTime @updatedAt
 }
 
+model AiOutput {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  result    String
+  createdAt DateTime @default(now())
+}
+
 model DeadMansWallet {
   id                 String        @id @default(cuid())
   address            String        @unique
