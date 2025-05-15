@@ -8,7 +8,7 @@ use soroban_sdk::{
 };
 
 // Replace with your actual 32-byte token contract ID:
-const TOKEN_CONTRACT_ID: &str = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2RGCBQYD";
+const TOKEN_CONTRACT_ID: &str = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
 
 // We can't store a &str as key in 22.0.x, so let's define a Symbol constant:
 const REGISTERED_USERS_KEY: Symbol = symbol_short!("registry");
