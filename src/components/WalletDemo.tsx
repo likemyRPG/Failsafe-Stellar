@@ -19,6 +19,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { CardContainer, GradientText, StyledPaper } from "./StyledComponents";
 import { toast } from "react-toastify";
+import { account } from "@/lib/passkey";
 
 type ViewState = "initial" | "connect" | "register";
 
@@ -139,6 +140,21 @@ const WalletDemo: React.FC = () => {
                 );
         }
     };
+
+    useEffect(() => {
+        console.log("AAAA Connecting wallet with account");
+        const connectWalletWithAccount = async () => {
+                const keyId = localStorage.getItem("keyId");
+                const contractId = localStorage.getItem("contractId");
+                console.log("AAAA keyId", keyId);
+                if (keyId) {
+                    await account.connectWallet({ keyId, getContractId: async (keyId) => contractId ?? undefined });
+                    console.log("AAAA Wallet connected");
+                }
+
+        };
+        connectWalletWithAccount();
+    }, []);
 
     return (
         <div className="min-h-screen px-4">

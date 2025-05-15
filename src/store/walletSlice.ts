@@ -17,6 +17,27 @@ import {
 import { toast } from "react-toastify";
 import broke_contract from '../../packages'
 
+
+function normalizeKeyId(keyId: any): string {
+    if (typeof keyId === 'string') {
+      try {
+        const parsed = JSON.parse(keyId);
+        if (parsed.type === 'Buffer' && Array.isArray(parsed.data)) {
+          return Buffer.from(parsed.data).toString('hex');
+        }
+      } catch {
+        return keyId; // just a plain string
+      }
+      return keyId;
+    }
+  
+    if (typeof keyId === 'object' && keyId?.type === 'Buffer') {
+      return Buffer.from(keyId.data).toString('hex');
+    }
+  
+    return String(keyId);
+  }
+
 export interface Beneficiary {
   id?: string;
   name: string;
@@ -204,7 +225,7 @@ export const registerWallet = createAsyncThunk(
                 console.log("Wallet creation result:", result);
                 
                 // Extract values
-                kid = result.keyId;
+                kid = result.keyIdBase64;
                 cid = result.contractId;
                 xdr = result.signedTx;
                 
@@ -1287,13 +1308,13 @@ export const registerDeadMansWallet = createAsyncThunk<
       const xdrToSign = at.built.toXDR();
 
       // 3) Sign the XDR with PasskeyKit:
-      const signedTx = await account.sign(at.built!, {keyId});
+      const signedTx = await account.sign(at.built!, { keyId });
 
       console.log("Signed transaction:", signedTx);
 
 
       // 4) Send the signed XDR to the network
-      const result = await send(signedTx.built!);
+      const result = await send(signedTx);
       console.log("Send result:", result);
 
       toast.dismiss(loadingToast);
@@ -1357,39 +1378,8 @@ export const checkInDeadMansWallet = createAsyncThunk(
             
             try {
                 // JSON parsing workaround for Buffer objects
-                let parsedKeyId;
-                if (typeof keyId === 'string') {
-                    try {
-                        // Try to parse it if it's a stringified object
-                        const possibleObj = JSON.parse(keyId);
-                        if (possibleObj && possibleObj.type === 'Buffer' && Array.isArray(possibleObj.data)) {
-                            // It's a stringified Buffer object
-                            parsedKeyId = Buffer.from(possibleObj.data).toString('hex');
-                            console.log("Parsed Buffer from JSON string:", parsedKeyId);
-                        } else {
-                            // Just use the keyId as is
-                            parsedKeyId = keyId;
-                        }
-                    } catch (e) {
-                        // Not JSON, just use the string directly
-                        parsedKeyId = keyId;
-                    }
-                } else if (typeof keyId === 'object' && keyId !== null) {
-                    if ('type' in keyId && keyId.type === 'Buffer' && 'data' in keyId && Array.isArray(keyId.data)) {
-                        // It's a Buffer object
-                        parsedKeyId = Buffer.from(keyId.data).toString('hex');
-                        console.log("Parsed Buffer from object:", parsedKeyId);
-                    } else {
-                        // Some other object - stringify it
-                        parsedKeyId = JSON.stringify(keyId);
-                    }
-                } else {
-                    // Just use whatever value we have
-                    parsedKeyId = String(keyId);
-                }
-                
-                console.log("Using parsed user key for check-in:", parsedKeyId);
-                
+                const keyId = localStorage.getItem("keyId");
+                        // Try to parse it if it's a stringified object                
                 // The client is already instantiated in packages/index.ts
                 console.log("Calling check_in on broke_contract client");
                 
@@ -1402,28 +1392,10 @@ export const checkInDeadMansWallet = createAsyncThunk(
                     
                     console.log("Check-in transaction:", at);
                     
-                    // Try to sign and send the transaction
-                    try {
-                        console.log("Attempting to sign transaction");
-                        
-                        // First try with signAndSend directly if it exists
-                        if (typeof at.signAndSend === 'function') {
-                            console.log("Using signAndSend method directly");
-                            try {
-                                const result = await at.signAndSend();
-                                console.log("SignAndSend result:", result);
-                                
-                                // If we get here, the blockchain transaction succeeded
-                                console.log("Blockchain check-in successful!");
-                            } catch (signAndSendError) {
-                                console.error("Blockchain check-in failed:", signAndSendError);
-                                // Fall through to database update
-                            }
-                        }
-                    } catch (signError) {
-                        console.error("Error signing/sending transaction:", signError);
-                        // Fall through to database update
-                    }
+
+                    const signedTx = await account.sign(at.built!, { keyId });
+                    const result = await send(signedTx);
+                    console.log("Send result:", result);
                 } catch (contractError) {
                     console.error("Contract interaction failed:", contractError);
                     // Fall through to database update
