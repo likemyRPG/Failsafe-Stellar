@@ -2,7 +2,7 @@ import { PasskeyKit, SACClient } from "passkey-kit";
 import { Account, Keypair, StrKey } from "@stellar/stellar-sdk";
 import { Buffer } from "buffer";
 import { toast } from "react-toastify";
-import { Server } from "@stellar/stellar-sdk/lib/rpc";
+import { Server } from "@stellar/stellar-sdk/minimal/rpc";
 
 // Configuration constants
 export const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
