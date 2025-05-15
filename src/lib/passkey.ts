@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { Server } from "@stellar/stellar-sdk/minimal/rpc";
 
 // Configuration constants
-export const NETWORK_PASSPHRASE = "Consensus Hackathon 2025";
+export const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
 // Use correct Soroban testnet RPC endpoints - try multiple variations if needed
 export const RPC_URL = "https://soroban-testnet.stellar.org";
 export const FALLBACK_RPC_URL = "https://soroban-testnet.stellar.org:443";
@@ -96,7 +96,7 @@ export const account = new PasskeyKit({
     walletWasmHash: "ecd990f0b45ca6817149b6175f79b32efb442f35731985a084131e8265c4cd90"
     // Note: factoryContractId is not supported in this version of PasskeyKit
     // If wallet creation fails, you may need to use a different version of PasskeyKit
-    // that includes factory contract ID support
+    // that includes factory contract ID support,
 });
 
 // Create the server instance with Launchtube configuration
@@ -668,3 +668,9 @@ export const fundContractCreator = async (contractId: string, amount = 10_000_00
         };
     }
 };
+
+
+export const send = async (xdr: string) => {
+    const result = await server.send(xdr);
+    return result;
+}

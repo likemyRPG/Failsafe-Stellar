@@ -1,9 +1,10 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
   WalletState, 
-  configureDeadMansWallet 
+  configureDeadMansWallet,
+  Beneficiary
 } from '../store/walletSlice';
 import { 
   Button, 
@@ -19,7 +20,17 @@ import {
   ModalBody, 
   ModalFooter,
   useDisclosure,
-  Badge
+  Badge,
+  Radio,
+  RadioGroup,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Switch,
+  Tooltip
 } from "@heroui/react";
 import { toast } from 'react-toastify';
 import { useDeadMansWallet } from '../hooks/useDeadMansWallet';
@@ -45,19 +56,92 @@ const DeadMansWallet: React.FC = () => {
     isUrgent,
     timeExpired,
     formatDate,
-    handleCheckIn
+    handleCheckIn,
+    getDefaultAiPrompt
   } = useDeadMansWallet();
 
   const [newDestinationAddress, setNewDestinationAddress] = useState('');
   const [newCheckInPeriod, setNewCheckInPeriod] = useState('30');
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [useAiOption, setUseAiOption] = useState(true);
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [newBeneficiary, setNewBeneficiary] = useState<Beneficiary>({
+    name: '',
+    walletAddress: '',
+    relationship: '',
+  });
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { 
+    isOpen: isAddBeneficiaryOpen, 
+    onOpen: onOpenAddBeneficiary, 
+    onClose: onCloseAddBeneficiary 
+  } = useDisclosure();
   const [checkingIn, setCheckingIn] = useState(false);
+
+  // Initialize state from existing settings
+  useEffect(() => {
+    if (deadMansWallet.isConfigured) {
+      setNewDestinationAddress(deadMansWallet.destinationAddress || '');
+      setNewCheckInPeriod(deadMansWallet.checkInPeriod.toString());
+      setAiEnabled(deadMansWallet.aiEnabled || false);
+      setAiPrompt(deadMansWallet.aiPrompt || '');
+      setUseAiOption(deadMansWallet.useAiOption);
+      setBeneficiaries(deadMansWallet.beneficiaries || []);
+    }
+  }, [deadMansWallet]);
+
+  // Beneficiary management functions
+  const handleAddBeneficiary = () => {
+    if (!newBeneficiary.name || !newBeneficiary.walletAddress) {
+      toast.error("Name and wallet address are required for beneficiaries");
+      return;
+    }
+    
+    // Add new beneficiary to the list
+    setBeneficiaries([...beneficiaries, { ...newBeneficiary }]);
+    
+    // Reset form
+    setNewBeneficiary({
+      name: '',
+      walletAddress: '',
+      relationship: '',
+    });
+    
+    onCloseAddBeneficiary();
+  };
+  
+  const handleRemoveBeneficiary = (index: number) => {
+    const updatedBeneficiaries = [...beneficiaries];
+    updatedBeneficiaries.splice(index, 1);
+    setBeneficiaries(updatedBeneficiaries);
+  };
+  
+  const handleEditBeneficiary = (index: number, updatedBeneficiary: Beneficiary) => {
+    const updatedBeneficiaries = [...beneficiaries];
+    updatedBeneficiaries[index] = updatedBeneficiary;
+    setBeneficiaries(updatedBeneficiaries);
+  };
 
   // In a real implementation, this would fetch settings from the blockchain
   const handleSaveSettings = async () => {
-    if (!newDestinationAddress) {
-      toast.error("Please enter a valid destination address");
-      return;
+    if (useAiOption) {
+      // AI allocation mode - validate beneficiaries or destination
+      if (!aiEnabled && beneficiaries.length === 0) {
+        toast.error("Please add at least one beneficiary or enable AI with instructions");
+        return;
+      }
+      
+      if (aiEnabled && !aiPrompt.trim()) {
+        toast.error("Please enter AI instructions or disable AI");
+        return;
+      }
+    } else {
+      // Direct destination mode
+      if (!newDestinationAddress) {
+        toast.error("Please enter a valid destination address");
+        return;
+      }
     }
 
     if (!newCheckInPeriod || parseInt(newCheckInPeriod) < 1) {
@@ -68,8 +152,12 @@ const DeadMansWallet: React.FC = () => {
     try {
       // Configure dead man's wallet on the blockchain
       await dispatch(configureDeadMansWallet({
-        destinationAddress: newDestinationAddress,
-        checkInPeriod: parseInt(newCheckInPeriod)
+        destinationAddress: useAiOption ? null : newDestinationAddress,
+        checkInPeriod: parseInt(newCheckInPeriod),
+        aiEnabled,
+        aiPrompt: aiEnabled ? aiPrompt : null,
+        useAiOption,
+        beneficiaries
       }) as any).unwrap();
       
       onClose(); // Close the modal
@@ -146,6 +234,17 @@ const DeadMansWallet: React.FC = () => {
     return Math.max(0, nextDeadline - now);
   };
 
+  // When opening the modal, initialize AI fields from current config
+  const openConfigModal = () => {
+    setNewDestinationAddress(deadMansWallet.destinationAddress || '');
+    setNewCheckInPeriod(deadMansWallet.checkInPeriod.toString());
+    setAiEnabled(deadMansWallet.aiEnabled || false);
+    setAiPrompt(deadMansWallet.aiPrompt || '');
+    setUseAiOption(deadMansWallet.useAiOption);
+    setBeneficiaries(deadMansWallet.beneficiaries || []);
+    onOpen();
+  };
+
   return (
     <Card>
       <CardHeader className="flex justify-between items-center">
@@ -184,17 +283,87 @@ const DeadMansWallet: React.FC = () => {
                 </div>
                 
                 <div className="p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium dark:text-gray-300 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                      </svg>
-                      Destination Address
-                    </span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800/60 px-2 py-1 rounded">
-                      {deadMansWallet.destinationAddress}
-                    </span>
-                  </div>
+                  {deadMansWallet.useAiOption ? (
+                    <>
+                      {/* AI-based allocation mode */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium dark:text-gray-300 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          Distribution Mode
+                        </span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800/60 px-2 py-1 rounded">
+                          AI Allocation
+                        </span>
+                      </div>
+                      
+                      {deadMansWallet.beneficiaries && deadMansWallet.beneficiaries.length > 0 && (
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium dark:text-gray-300 flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            Beneficiaries ({deadMansWallet.beneficiaries.length})
+                          </span>
+                          <div className="ml-5 grid grid-cols-1 gap-1">
+                            {deadMansWallet.beneficiaries.slice(0, 3).map((ben, idx) => (
+                              <div key={idx} className="text-xs flex items-center justify-between">
+                                <span className="text-gray-700 dark:text-gray-300">{ben.name}</span>
+                                <span className="text-gray-500 dark:text-gray-400 font-mono text-[10px] truncate max-w-[120px]">
+                                  {ben.walletAddress}
+                                </span>
+                              </div>
+                            ))}
+                            {deadMansWallet.beneficiaries.length > 3 && (
+                              <div className="text-xs text-gray-500 italic">
+                                +{deadMansWallet.beneficiaries.length - 3} more...
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium dark:text-gray-300 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          AI Assistant
+                        </span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800/60 px-2 py-1 rounded">
+                          {deadMansWallet.aiEnabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Direct destination mode */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium dark:text-gray-300 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                          </svg>
+                          Distribution Mode
+                        </span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-800/60 px-2 py-1 rounded">
+                          Direct Transfer
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium dark:text-gray-300 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                          </svg>
+                          Destination Address
+                        </span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800/60 px-2 py-1 rounded">
+                          {deadMansWallet.destinationAddress}
+                        </span>
+                      </div>
+                    </>
+                  )}
                   
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-medium dark:text-gray-300 flex items-center">
@@ -254,11 +423,7 @@ const DeadMansWallet: React.FC = () => {
                       </Button>
                       <Button
                         className="w-full border border-red-200 dark:border-red-900/30 text-red-500 dark:text-red-400 dark:bg-red-900/10 text-xs py-1"
-                        onClick={() => {
-                          setNewDestinationAddress(deadMansWallet.destinationAddress || '');
-                          setNewCheckInPeriod(deadMansWallet.checkInPeriod.toString());
-                          onOpen();
-                        }}
+                        onClick={openConfigModal}
                         variant="flat"
                         size="sm"
                       >
@@ -282,7 +447,7 @@ const DeadMansWallet: React.FC = () => {
                   </p>
                   <Button
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs"
-                    onClick={() => onOpen()}
+                    onClick={openConfigModal}
                     size="sm"
                   >
                     Configure Switch
@@ -308,26 +473,7 @@ const DeadMansWallet: React.FC = () => {
             </ModalHeader>
             <ModalBody className="px-5 py-4">
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                    </svg>
-                    Destination Address
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Enter Stellar address"
-                    value={newDestinationAddress}
-                    onChange={(e) => setNewDestinationAddress(e.target.value)}
-                    className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
-                    variant="bordered"
-                  />
-                  <p className="mt-1.5 text-xs text-foreground-500 dark:text-gray-400 pl-5">
-                    This address will receive your funds if you don't check in on time
-                  </p>
-                </div>
-                
+                {/* Check-in period setting */}
                 <div>
                   <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -350,13 +496,204 @@ const DeadMansWallet: React.FC = () => {
                   </p>
                 </div>
                 
+                {/* Mode selector */}
+                <div className="mt-5">
+                  <RadioGroup
+                    label="Transfer Mode"
+                    value={useAiOption ? "ai" : "direct"}
+                    onChange={(value: string | React.ChangeEvent<HTMLInputElement>) => {
+                      // Handle both string and event cases
+                      if (typeof value === 'string') {
+                        setUseAiOption(value === "ai");
+                      } else if (value.target && value.target.value) {
+                        setUseAiOption(value.target.value === "ai");
+                      }
+                    }}
+                    className="mb-3"
+                  >
+                    <Radio value="ai">Use AI to distribute funds to beneficiaries</Radio>
+                    <Radio value="direct">Send all funds to one destination address</Radio>
+                  </RadioGroup>
+                </div>
+                
+                {/* Direct destination address - only show if direct mode */}
+                {!useAiOption && (
+                  <div>
+                    <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                      Destination Address
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Enter Stellar address"
+                      value={newDestinationAddress}
+                      onChange={(e) => setNewDestinationAddress(e.target.value)}
+                      className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
+                      variant="bordered"
+                    />
+                    <p className="mt-1.5 text-xs text-foreground-500 dark:text-gray-400 pl-5">
+                      This address will receive all your funds if you don't check in on time
+                    </p>
+                  </div>
+                )}
+                
+                {/* AI mode settings */}
+                {useAiOption && (
+                  <>
+                    {/* Beneficiaries table */}
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-sm font-medium dark:text-gray-300 block flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          Beneficiaries
+                        </label>
+                        <Button 
+                          size="sm" 
+                          className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+                          onClick={onOpenAddBeneficiary}
+                        >
+                          Add Person
+                        </Button>
+                      </div>
+                      
+                      {beneficiaries.length > 0 ? (
+                        <Table 
+                          aria-label="Beneficiaries table"
+                          className="mt-2 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                          removeWrapper
+                        >
+                          <TableHeader>
+                            <TableColumn>NAME</TableColumn>
+                            <TableColumn>ADDRESS</TableColumn>
+                            <TableColumn width={100}>ACTIONS</TableColumn>
+                          </TableHeader>
+                          <TableBody>
+                            {beneficiaries.map((beneficiary, index) => (
+                              <TableRow key={index}>
+                                <TableCell>
+                                  <div>
+                                    <p className="text-sm font-medium">{beneficiary.name}</p>
+                                    {beneficiary.relationship && (
+                                      <p className="text-xs text-gray-500">{beneficiary.relationship}</p>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <p className="text-xs font-mono overflow-hidden text-ellipsis">
+                                    {beneficiary.walletAddress}
+                                  </p>
+                                </TableCell>
+                                <TableCell>
+                                  <Button
+                                    size="sm"
+                                    className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30"
+                                    onClick={() => handleRemoveBeneficiary(index)}
+                                    variant="flat"
+                                  >
+                                    Remove
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <div className="text-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No beneficiaries added yet.</p>
+                        </div>
+                      )}
+                      
+                      <p className="mt-1.5 text-xs text-foreground-500 dark:text-gray-400">
+                        The AI will determine how to distribute funds among these beneficiaries when activated
+                      </p>
+                    </div>
+                    
+                    {/* AI Assistant toggle */}
+                    <Divider className="my-4" />
+                    
+                    <div>
+                      <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        AI Assistant
+                      </label>
+                      
+                      <div className="flex items-center mb-2">
+                        <span className="text-sm text-gray-700 dark:text-gray-300 mr-2">Enable AI Instructions</span>
+                        <div className="relative inline-block w-10 mr-2 align-middle select-none">
+                          <input
+                            type="checkbox"
+                            id="ai-toggle"
+                            checked={aiEnabled}
+                            onChange={(e) => setAiEnabled(e.target.checked)}
+                            className="sr-only"
+                          />
+                          <label
+                            htmlFor="ai-toggle"
+                            className={`block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer ${
+                              aiEnabled ? 'bg-blue-500' : 'bg-gray-300'
+                            }`}
+                          >
+                            <span
+                              className={`block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${
+                                aiEnabled ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            ></span>
+                          </label>
+                        </div>
+                      </div>
+                      
+                      {aiEnabled && (
+                        <div className="mt-2">
+                          <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block">
+                            AI Instructions
+                          </label>
+                          <textarea
+                            placeholder="Enter instructions for the AI to follow when your wallet expires"
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            className="w-full h-24 bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm p-2"
+                          />
+                          <div className="flex justify-end mt-1">
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              className="text-xs"
+                              onClick={() => setAiPrompt(getDefaultAiPrompt())}
+                            >
+                              Use Default Template
+                            </Button>
+                          </div>
+                          <p className="mt-1.5 text-xs text-foreground-500 dark:text-gray-400">
+                            The AI will use these instructions to act on your behalf if you don't check in on time
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+                
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-lg text-blue-800 dark:text-blue-300 text-sm">
                   <div className="flex items-start">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span>
-                      If you don't check in within the specified period, your funds will be automatically transferred to the destination address.
+                      If you don't check in within the specified period:
+                      {useAiOption ? (
+                        aiEnabled ? (
+                          " The AI will execute your instructions and determine how to distribute funds among your beneficiaries."
+                        ) : (
+                          " The AI will automatically distribute your funds among the listed beneficiaries."
+                        )
+                      ) : (
+                        " All your funds will be automatically transferred to the destination address."
+                      )}
                     </span>
                   </div>
                 </div>
@@ -379,6 +716,85 @@ const DeadMansWallet: React.FC = () => {
                 size="sm"
               >
                 Save Settings
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+        
+        {/* Add Beneficiary Modal */}
+        <Modal isOpen={isAddBeneficiaryOpen} onClose={onCloseAddBeneficiary} className="backdrop-blur-sm">
+          <ModalContent className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800/60 rounded-xl shadow-xl dark:shadow-black/40">
+            <ModalHeader className="border-b border-gray-200 dark:border-gray-800/60 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Add Beneficiary</h3>
+              </div>
+            </ModalHeader>
+            <ModalBody className="px-5 py-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block">
+                    Name
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Enter beneficiary name"
+                    value={newBeneficiary.name}
+                    onChange={(e) => setNewBeneficiary({...newBeneficiary, name: e.target.value})}
+                    className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
+                    variant="bordered"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block">
+                    Wallet Address
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Enter Stellar address"
+                    value={newBeneficiary.walletAddress}
+                    onChange={(e) => setNewBeneficiary({...newBeneficiary, walletAddress: e.target.value})}
+                    className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
+                    variant="bordered"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block">
+                    Relationship (Optional)
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Family, Friend, Business Partner, etc."
+                    value={newBeneficiary.relationship || ''}
+                    onChange={(e) => setNewBeneficiary({...newBeneficiary, relationship: e.target.value})}
+                    className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
+                    variant="bordered"
+                  />
+                </div>
+              </div>
+            </ModalBody>
+            <ModalFooter className="border-t border-gray-200 dark:border-gray-800/60 gap-2">
+              <Button 
+                variant="flat"
+                className="border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs py-1"
+                onClick={onCloseAddBeneficiary}
+                size="sm"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="solid"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1"
+                onClick={handleAddBeneficiary}
+                size="sm"
+              >
+                Add Beneficiary
               </Button>
             </ModalFooter>
           </ModalContent>

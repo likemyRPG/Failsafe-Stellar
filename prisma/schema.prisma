@@ -1,7 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
 model AiProfile {
   id        String   @id @default(cuid())
   address   String   @unique
   prompt    String
+  isEnabled Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DeadMansWallet {
+  id                 String        @id @default(cuid())
+  address            String        @unique
+  destinationAddress String?       // Now optional - either this or beneficiaries is used
+  checkInPeriod      Int           @default(30)
+  isConfigured       Boolean       @default(false)
+  lastCheckIn        DateTime      @default(now())
+  nextCheckInDeadline DateTime
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  useAiOption        Boolean       @default(true) // Default to AI option - required for beneficiary allocation
+  beneficiaries      Beneficiary[]
+}
+
+model Beneficiary {
+  id              String         @id @default(cuid())
+  name            String
+  walletAddress   String
+  relationship    String?        // Optional - e.g. "Family", "Friend", "Business Partner"
+  sharePercentage Int?           // Will be determined by AI when executed
+  deadMansWallet  DeadMansWallet @relation(fields: [walletId], references: [id])
+  walletId        String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([walletId])
 }

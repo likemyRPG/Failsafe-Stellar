@@ -11,9 +11,20 @@ import {
     FORCE_LOCAL_WALLET,
     createLocalPasskey,
     fundWithLaunchtube,
-    fundContractCreator
+    fundContractCreator,
+    send
 } from "../lib/passkey";
 import { toast } from "react-toastify";
+import broke_contract from '../../packages'
+
+export interface Beneficiary {
+  id?: string;
+  name: string;
+  walletAddress: string;
+  relationship?: string | null;
+  sharePercentage?: number | null;
+  walletId?: string;
+}
 
 export interface DeadMansWalletConfig {
     isConfigured: boolean;
@@ -21,6 +32,10 @@ export interface DeadMansWalletConfig {
     checkInPeriod: number; // in days
     lastCheckIn: string | null; // ISO date string
     nextCheckInDeadline: string | null; // ISO date string
+    aiEnabled: boolean;
+    aiPrompt: string | null;
+    useAiOption: boolean; // True for AI allocation, false for direct destination
+    beneficiaries: Beneficiary[];
 }
 
 export interface WalletState {
@@ -47,7 +62,11 @@ const initialState: WalletState = {
         destinationAddress: null,
         checkInPeriod: 30,
         lastCheckIn: null,
-        nextCheckInDeadline: null
+        nextCheckInDeadline: null,
+        aiEnabled: false,
+        aiPrompt: null,
+        useAiOption: true,
+        beneficiaries: []
     }
 };
 
@@ -865,7 +884,7 @@ export const getDeadMansWalletConfig = createAsyncThunk(
     "wallet/getDeadMansWalletConfig",
     async (_, { getState, rejectWithValue }) => {
         const state = getState() as { wallet: WalletState };
-        const { contractId } = state.wallet;
+        const { contractId, keyId } = state.wallet;
         
         if (!contractId) {
             return rejectWithValue("No wallet connected");
@@ -882,20 +901,115 @@ export const getDeadMansWalletConfig = createAsyncThunk(
         try {
             console.log("Fetching dead man's wallet config for:", contractId);
             
-            // This would be replaced with actual blockchain interaction
-            // For now, we'll simulate an API call with a delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // First check if we have stored config in Prisma
+            const response = await fetch(`/api/deadManWallet?address=${contractId}`);
             
-            // This is mock data - in a real app, this would come from the blockchain
-            const mockResult = {
-                isConfigured: false,
-                destinationAddress: null,
-                checkInPeriod: 30,
-                lastCheckIn: null,
-                nextCheckInDeadline: null
-            };
+            if (response.ok) {
+                const dbConfig = await response.json();
+                if (dbConfig && dbConfig.isConfigured) {
+                    console.log("Found configuration in database:", dbConfig);
+                    return {
+                        isConfigured: dbConfig.isConfigured,
+                        destinationAddress: dbConfig.destinationAddress,
+                        checkInPeriod: dbConfig.checkInPeriod,
+                        lastCheckIn: dbConfig.lastCheckIn,
+                        nextCheckInDeadline: dbConfig.nextCheckInDeadline,
+                        aiEnabled: dbConfig.aiEnabled || false,
+                        aiPrompt: dbConfig.aiPrompt || null,
+                        useAiOption: dbConfig.useAiOption || true,
+                        beneficiaries: dbConfig.beneficiaries || []
+                    };
+                }
+            }
             
-            return mockResult;
+            // If not in database, try to get from blockchain
+            try {
+                // Call the get_config method on the wallet contract
+                const { result } = await broke_contract.get_config({
+                    contractId
+                });
+                
+                console.log("Get config response:", result);
+                
+                // Extract the configuration from the result
+                let config: DeadMansWalletConfig = {
+                    isConfigured: false,
+                    destinationAddress: null,
+                    checkInPeriod: 30,
+                    lastCheckIn: null,
+                    nextCheckInDeadline: null,
+                    aiEnabled: false,
+                    aiPrompt: null,
+                    useAiOption: true,
+                    beneficiaries: []
+                };
+                
+                // Parse the result - we're expecting a structure like 
+                // { isConfigured: boolean, destination: string, period: number, ... }
+                if (result) {
+                    config.isConfigured = result.isConfigured || result.is_configured || false;
+                    
+                    if (config.isConfigured) {
+                        config.destinationAddress = result.destination || result.destinationAddress;
+                        config.checkInPeriod = Number(result.period || result.checkInPeriod) / (24 * 60 * 60); // Convert seconds to days
+                        
+                        // Convert timestamp to ISO string if available
+                        if (result.lastCheckIn || result.last_check_in) {
+                            const timestamp = Number(result.lastCheckIn || result.last_check_in);
+                            config.lastCheckIn = new Date(timestamp * 1000).toISOString();
+                        }
+                        
+                        // Calculate next deadline
+                        if (result.nextDeadline || result.next_deadline) {
+                            const timestamp = Number(result.nextDeadline || result.next_deadline);
+                            config.nextCheckInDeadline = new Date(timestamp * 1000).toISOString();
+                        } else if (config.lastCheckIn && config.checkInPeriod) {
+                            // Calculate next deadline from last check-in + period
+                            const lastCheck = new Date(config.lastCheckIn);
+                            const deadline = new Date(lastCheck);
+                            deadline.setDate(lastCheck.getDate() + config.checkInPeriod);
+                            config.nextCheckInDeadline = deadline.toISOString();
+                        }
+                        
+                        // Store in database for future use
+                        await fetch('/api/deadManWallet', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                address: contractId,
+                                destinationAddress: config.destinationAddress,
+                                checkInPeriod: config.checkInPeriod,
+                                isConfigured: config.isConfigured,
+                                lastCheckIn: config.lastCheckIn,
+                                nextCheckInDeadline: config.nextCheckInDeadline,
+                                useAiOption: true,
+                                beneficiaries: []
+                            })
+                        });
+                    }
+                }
+                
+                console.log("Parsed dead man's wallet config:", config);
+                return config;
+            } catch (error) {
+                console.error("Contract call error:", error);
+                
+                // This likely means the contract doesn't support the dead man's wallet feature
+                // Return default configuration
+                return {
+                    isConfigured: false,
+                    destinationAddress: null,
+                    checkInPeriod: 30,
+                    lastCheckIn: null,
+                    nextCheckInDeadline: null,
+                    aiEnabled: false,
+                    aiPrompt: null,
+                    useAiOption: true,
+                    beneficiaries: []
+                };
+            }
         } catch (error) {
             console.error("Error fetching dead man's wallet config:", error);
             
@@ -911,7 +1025,21 @@ export const getDeadMansWalletConfig = createAsyncThunk(
 export const configureDeadMansWallet = createAsyncThunk(
     "wallet/configureDeadMansWallet",
     async (
-        { destinationAddress, checkInPeriod }: { destinationAddress: string; checkInPeriod: number },
+        { 
+            destinationAddress, 
+            checkInPeriod, 
+            aiEnabled = false, 
+            aiPrompt = null,
+            useAiOption = true,
+            beneficiaries = []
+        }: { 
+            destinationAddress?: string | null; 
+            checkInPeriod: number;
+            aiEnabled?: boolean;
+            aiPrompt?: string | null;
+            useAiOption?: boolean;
+            beneficiaries?: Beneficiary[];
+        },
         { getState, rejectWithValue }
     ) => {
         const state = getState() as { wallet: WalletState };
@@ -930,23 +1058,79 @@ export const configureDeadMansWallet = createAsyncThunk(
             console.log("Configuring dead man's wallet for:", contractId);
             console.log("Destination address:", destinationAddress);
             console.log("Check-in period (days):", checkInPeriod);
+            console.log("AI enabled:", aiEnabled);
+            console.log("AI prompt:", aiPrompt);
+            console.log("Use AI option:", useAiOption);
+            console.log("Beneficiaries:", beneficiaries);
             
-            // This would be an on-chain transaction in a real implementation
-            // For now, simulate an API call with a delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Validate that at least one option is properly configured
+            if (!useAiOption && !destinationAddress) {
+                return rejectWithValue("Either a destination address or beneficiaries with AI enabled must be configured");
+            }
+            
+            if (useAiOption && !aiEnabled && (!beneficiaries || beneficiaries.length === 0)) {
+                return rejectWithValue("When using AI option without direct AI prompts, beneficiaries must be provided");
+            }
             
             // Calculate next check-in deadline
             const now = new Date();
             const nextDeadline = new Date(now);
             nextDeadline.setDate(nextDeadline.getDate() + checkInPeriod);
             
-            // Mock successful result
+            // Save configuration to database
+            const dbResponse = await fetch('/api/deadManWallet', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    address: contractId,
+                    destinationAddress,
+                    checkInPeriod,
+                    isConfigured: true,
+                    lastCheckIn: now.toISOString(),
+                    nextCheckInDeadline: nextDeadline.toISOString(),
+                    useAiOption,
+                    beneficiaries
+                })
+            });
+            
+            if (!dbResponse.ok) {
+                console.error("Failed to save configuration to database");
+            }
+            
+            // If AI is enabled, save the AI configuration
+            if (aiEnabled && aiPrompt) {
+                const aiResponse = await fetch('/api/ai', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        address: contractId,
+                        prompt: aiPrompt,
+                        isEnabled: aiEnabled
+                    })
+                });
+                
+                if (!aiResponse.ok) {
+                    console.error("Failed to save AI configuration to database");
+                }
+            }
+            
+            const response = await dbResponse.json();
+            
+            // Return the configuration
             return {
                 isConfigured: true,
                 destinationAddress,
                 checkInPeriod,
                 lastCheckIn: now.toISOString(),
-                nextCheckInDeadline: nextDeadline.toISOString()
+                nextCheckInDeadline: nextDeadline.toISOString(),
+                aiEnabled,
+                aiPrompt,
+                useAiOption,
+                beneficiaries: response.beneficiaries || beneficiaries || []
             };
         } catch (error) {
             console.error("Error configuring dead man's wallet:", error);
@@ -982,16 +1166,119 @@ export const checkInDeadMansWallet = createAsyncThunk(
         try {
             console.log("Checking in for dead man's wallet:", contractId);
             
-            // This would be an on-chain transaction in a real implementation
-            // For now, simulate an API call with a delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            try {
+                // JSON parsing workaround for Buffer objects
+                let parsedKeyId;
+                if (typeof keyId === 'string') {
+                    try {
+                        // Try to parse it if it's a stringified object
+                        const possibleObj = JSON.parse(keyId);
+                        if (possibleObj && possibleObj.type === 'Buffer' && Array.isArray(possibleObj.data)) {
+                            // It's a stringified Buffer object
+                            parsedKeyId = Buffer.from(possibleObj.data).toString('hex');
+                            console.log("Parsed Buffer from JSON string:", parsedKeyId);
+                        } else {
+                            // Just use the keyId as is
+                            parsedKeyId = keyId;
+                        }
+                    } catch (e) {
+                        // Not JSON, just use the string directly
+                        parsedKeyId = keyId;
+                    }
+                } else if (typeof keyId === 'object' && keyId !== null) {
+                    if ('type' in keyId && keyId.type === 'Buffer' && 'data' in keyId && Array.isArray(keyId.data)) {
+                        // It's a Buffer object
+                        parsedKeyId = Buffer.from(keyId.data).toString('hex');
+                        console.log("Parsed Buffer from object:", parsedKeyId);
+                    } else {
+                        // Some other object - stringify it
+                        parsedKeyId = JSON.stringify(keyId);
+                    }
+                } else {
+                    // Just use whatever value we have
+                    parsedKeyId = String(keyId);
+                }
+                
+                console.log("Using parsed user key for check-in:", parsedKeyId);
+                
+                // The client is already instantiated in packages/index.ts
+                console.log("Calling check_in on broke_contract client");
+                
+                // Get the assembled transaction from the client
+                const at = await broke_contract.check_in({
+                    user: contractId
+                });
+                
+                console.log("Check-in transaction:", at);
+                
+                // Try to sign and send the transaction
+                try {
+                    console.log("Attempting to sign transaction");
+                    
+                    // Get XDR directly from the transaction
+                    if (!at.toXDR) {
+                        console.error("Transaction doesn't have toXDR method:", at);
+                        
+                        // Try to get the built property
+                        if (at.built) {
+                            console.log("Transaction has built property:", at.built);
+                            
+                            // Get XDR from the built property
+                            const builtXdr = at.built.toXDR ? at.built.toXDR() : at.built;
+                            console.log("Got XDR from built property:", builtXdr);
+                            
+                            // Send the transaction directly
+                            const result = await send(builtXdr);
+                            console.log("Transaction result:", result);
+                        } else {
+                            // Just try sending the transaction as is
+                            const result = await at.signAndSend();
+                            console.log("SignAndSend result:", result);
+                        }
+                    } else {
+                        // Use the transaction's toXDR method
+                        const xdr = at.toXDR();
+                        console.log("Got XDR from transaction:", xdr);
+                        
+                        // Send the transaction directly
+                        const result = await send(xdr);
+                        console.log("Transaction result:", result);
+                    }
+                } catch (signError) {
+                    console.error("Error signing/sending transaction:", signError);
+                    console.error("Error details:", signError instanceof Error ? signError.message : String(signError));
+                    console.log("Continuing with database update only");
+                }
+            } catch (contractError) {
+                console.error("Error with contract interaction:", contractError);
+                console.log("Falling back to database update only");
+            }
             
-            // Calculate next check-in deadline
+            // Even if blockchain transaction fails, update the database
+            // to keep the UI consistent
             const now = new Date();
             const nextDeadline = new Date(now);
             nextDeadline.setDate(nextDeadline.getDate() + deadMansWallet.checkInPeriod);
             
-            // Mock successful result
+            // Update the database record
+            const dbResponse = await fetch('/api/deadManWallet', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    address: contractId,
+                    lastCheckIn: now.toISOString(),
+                    nextCheckInDeadline: nextDeadline.toISOString()
+                })
+            });
+            
+            if (!dbResponse.ok) {
+                console.error("Failed to update check-in in database");
+                throw new Error("Failed to update check-in in database");
+            }
+            
+            // Return the updated timestamps
             return {
                 lastCheckIn: now.toISOString(),
                 nextCheckInDeadline: nextDeadline.toISOString()
@@ -1145,7 +1432,11 @@ const walletSlice = createSlice({
                     destinationAddress: null,
                     checkInPeriod: 30,
                     lastCheckIn: null,
-                    nextCheckInDeadline: null
+                    nextCheckInDeadline: null,
+                    aiEnabled: false,
+                    aiPrompt: null,
+                    useAiOption: true,
+                    beneficiaries: []
                 };
             });
     },
