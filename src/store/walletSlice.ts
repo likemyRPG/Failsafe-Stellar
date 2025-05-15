@@ -15,6 +15,14 @@ import {
 } from "../lib/passkey";
 import { toast } from "react-toastify";
 
+export interface DeadMansWalletConfig {
+    isConfigured: boolean;
+    destinationAddress: string | null;
+    checkInPeriod: number; // in days
+    lastCheckIn: string | null; // ISO date string
+    nextCheckInDeadline: string | null; // ISO date string
+}
+
 export interface WalletState {
     keyId: string | null;
     contractId: string | null;
@@ -23,6 +31,7 @@ export interface WalletState {
     isLoading: boolean;
     error: string | null;
     fundingError: string | null;
+    deadMansWallet: DeadMansWalletConfig;
 }
 
 const initialState: WalletState = {
@@ -33,6 +42,13 @@ const initialState: WalletState = {
     isLoading: false,
     error: null,
     fundingError: null,
+    deadMansWallet: {
+        isConfigured: false,
+        destinationAddress: null,
+        checkInPeriod: 30,
+        lastCheckIn: null,
+        nextCheckInDeadline: null
+    }
 };
 
 const SCALAR_7 = 10_000_000;
@@ -844,6 +860,154 @@ export const disconnectWallet = createAsyncThunk(
     }
 );
 
+// Dead Man's Wallet functions
+export const getDeadMansWalletConfig = createAsyncThunk(
+    "wallet/getDeadMansWalletConfig",
+    async (_, { getState, rejectWithValue }) => {
+        const state = getState() as { wallet: WalletState };
+        const { contractId } = state.wallet;
+        
+        if (!contractId) {
+            return rejectWithValue("No wallet connected");
+        }
+        
+        // Skip for local wallets
+        if (contractId.startsWith("LOCAL_")) {
+            return {
+                isConfigured: false,
+                message: "Local wallets don't support dead man's wallet features"
+            };
+        }
+
+        try {
+            console.log("Fetching dead man's wallet config for:", contractId);
+            
+            // This would be replaced with actual blockchain interaction
+            // For now, we'll simulate an API call with a delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // This is mock data - in a real app, this would come from the blockchain
+            const mockResult = {
+                isConfigured: false,
+                destinationAddress: null,
+                checkInPeriod: 30,
+                lastCheckIn: null,
+                nextCheckInDeadline: null
+            };
+            
+            return mockResult;
+        } catch (error) {
+            console.error("Error fetching dead man's wallet config:", error);
+            
+            if (error instanceof Error) {
+                return rejectWithValue(error.message);
+            }
+            
+            return rejectWithValue("Failed to fetch dead man's wallet configuration");
+        }
+    }
+);
+
+export const configureDeadMansWallet = createAsyncThunk(
+    "wallet/configureDeadMansWallet",
+    async (
+        { destinationAddress, checkInPeriod }: { destinationAddress: string; checkInPeriod: number },
+        { getState, rejectWithValue }
+    ) => {
+        const state = getState() as { wallet: WalletState };
+        const { contractId, keyId } = state.wallet;
+        
+        if (!contractId || !keyId) {
+            return rejectWithValue("No wallet connected");
+        }
+        
+        // Skip for local wallets
+        if (contractId.startsWith("LOCAL_")) {
+            return rejectWithValue("Local wallets don't support dead man's wallet features");
+        }
+
+        try {
+            console.log("Configuring dead man's wallet for:", contractId);
+            console.log("Destination address:", destinationAddress);
+            console.log("Check-in period (days):", checkInPeriod);
+            
+            // This would be an on-chain transaction in a real implementation
+            // For now, simulate an API call with a delay
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Calculate next check-in deadline
+            const now = new Date();
+            const nextDeadline = new Date(now);
+            nextDeadline.setDate(nextDeadline.getDate() + checkInPeriod);
+            
+            // Mock successful result
+            return {
+                isConfigured: true,
+                destinationAddress,
+                checkInPeriod,
+                lastCheckIn: now.toISOString(),
+                nextCheckInDeadline: nextDeadline.toISOString()
+            };
+        } catch (error) {
+            console.error("Error configuring dead man's wallet:", error);
+            
+            if (error instanceof Error) {
+                return rejectWithValue(error.message);
+            }
+            
+            return rejectWithValue("Failed to configure dead man's wallet");
+        }
+    }
+);
+
+export const checkInDeadMansWallet = createAsyncThunk(
+    "wallet/checkInDeadMansWallet",
+    async (_, { getState, rejectWithValue }) => {
+        const state = getState() as { wallet: WalletState };
+        const { contractId, keyId, deadMansWallet } = state.wallet;
+        
+        if (!contractId || !keyId) {
+            return rejectWithValue("No wallet connected");
+        }
+        
+        if (!deadMansWallet.isConfigured) {
+            return rejectWithValue("Dead man's wallet not configured");
+        }
+        
+        // Skip for local wallets
+        if (contractId.startsWith("LOCAL_")) {
+            return rejectWithValue("Local wallets don't support dead man's wallet features");
+        }
+
+        try {
+            console.log("Checking in for dead man's wallet:", contractId);
+            
+            // This would be an on-chain transaction in a real implementation
+            // For now, simulate an API call with a delay
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Calculate next check-in deadline
+            const now = new Date();
+            const nextDeadline = new Date(now);
+            nextDeadline.setDate(nextDeadline.getDate() + deadMansWallet.checkInPeriod);
+            
+            // Mock successful result
+            return {
+                lastCheckIn: now.toISOString(),
+                nextCheckInDeadline: nextDeadline.toISOString()
+            };
+        } catch (error) {
+            console.error("Error checking in for dead man's wallet:", error);
+            
+            if (error instanceof Error) {
+                return rejectWithValue(error.message);
+            }
+            
+            return rejectWithValue("Failed to check in for dead man's wallet");
+        }
+    }
+);
+
 const walletSlice = createSlice({
     name: "wallet",
     initialState,
@@ -927,13 +1091,62 @@ const walletSlice = createSlice({
                 state.error = action.payload as string;
             });
 
-        // Disconnect wallet
+        // Dead Man's Wallet
+        builder
+            .addCase(getDeadMansWalletConfig.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(getDeadMansWalletConfig.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.deadMansWallet = action.payload as DeadMansWalletConfig;
+            })
+            .addCase(getDeadMansWalletConfig.rejected, (state) => {
+                state.isLoading = false;
+            });
+
+        builder
+            .addCase(configureDeadMansWallet.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(configureDeadMansWallet.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.deadMansWallet = action.payload as DeadMansWalletConfig;
+            })
+            .addCase(configureDeadMansWallet.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            });
+
+        builder
+            .addCase(checkInDeadMansWallet.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(checkInDeadMansWallet.fulfilled, (state, action) => {
+                state.isLoading = false;
+                if (action.payload) {
+                    state.deadMansWallet.lastCheckIn = action.payload.lastCheckIn;
+                    state.deadMansWallet.nextCheckInDeadline = action.payload.nextCheckInDeadline;
+                }
+            })
+            .addCase(checkInDeadMansWallet.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            });
+
+        // Disconnect wallet - clear dead man's wallet config too
         builder
             .addCase(disconnectWallet.fulfilled, (state) => {
                 state.keyId = null;
                 state.contractId = null;
                 state.balance = null;
                 state.isConnected = false;
+                state.deadMansWallet = {
+                    isConfigured: false,
+                    destinationAddress: null,
+                    checkInPeriod: 30,
+                    lastCheckIn: null,
+                    nextCheckInDeadline: null
+                };
             });
     },
 });

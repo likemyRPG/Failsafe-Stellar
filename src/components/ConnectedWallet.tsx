@@ -4,11 +4,13 @@ import {
   checkBalance, 
   disconnectWallet, 
   WalletState,
-  fundWallet
+  fundWallet,
+  getDeadMansWalletConfig
 } from '../store/walletSlice';
 import { Button, Divider, Spinner, Card, CardBody, CardHeader, Badge } from "@heroui/react";
 import { fundAccountDirectly, fundWithExplorer } from '../lib/passkey';
 import FundWithLaunchtube from './FundWithLaunchtube';
+import DeadMansWallet from './DeadMansWallet';
 
 const shortenAddress = (address: string) => {
   if (!address) return '';
@@ -29,6 +31,9 @@ const ConnectedWallet = () => {
   useEffect(() => {
     if (contractId && !isLocalWallet) {
       dispatch(checkBalance() as any);
+      
+      // Also fetch dead man's wallet configuration
+      dispatch(getDeadMansWalletConfig() as any);
     }
   }, [dispatch, contractId, isLocalWallet]);
 
@@ -88,105 +93,110 @@ const ConnectedWallet = () => {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="flex gap-3">
-        <div className="flex flex-col">
-          <p className="text-md">Your Wallet</p>
-          <div className="flex items-center">
-            {isLocalWallet ? (
-              <Badge color="warning" className="ml-1">Offline Mode</Badge>
-            ) : (
-              <Badge color="success" className="ml-1">Testnet</Badge>
-            )}
+    <div className="space-y-4">
+      <Card className="w-full">
+        <CardHeader className="flex gap-3">
+          <div className="flex flex-col">
+            <p className="text-md">Your Wallet</p>
+            <div className="flex items-center">
+              {isLocalWallet ? (
+                <Badge color="warning" className="ml-1">Offline Mode</Badge>
+              ) : (
+                <Badge color="success" className="ml-1">Testnet</Badge>
+              )}
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <Divider />
-      <CardBody>
-        {isLocalWallet ? (
-          <div className="bg-warning-50 text-warning-700 p-2 rounded-md mb-4">
-            <p className="text-sm font-medium">
-              This is a local wallet created while offline. It doesn't exist on the Stellar testnet.
-            </p>
+        </CardHeader>
+        <Divider />
+        <CardBody>
+          {isLocalWallet ? (
+            <div className="bg-warning-50 text-warning-700 p-2 rounded-md mb-4">
+              <p className="text-sm font-medium">
+                This is a local wallet created while offline. It doesn't exist on the Stellar testnet.
+              </p>
+              <Button 
+                size="sm" 
+                variant="flat"
+                color="warning"
+                className="mt-2"
+                onClick={handleDisconnect}
+              >
+                Disconnect and Try Again
+              </Button>
+            </div>
+          ) : (
+            <div className="bg-success-50 text-success-700 p-2 rounded-md mb-4">
+              <p className="text-sm font-medium">
+                Your wallet is connected to the Stellar testnet.
+              </p>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <p className="text-sm text-default-500">Wallet Address</p>
+            <div className="flex items-center">
+              <p className="break-all">{shortenAddress(contractId)}</p>
+              <Button 
+                size="sm" 
+                variant="light"
+                className="ml-2"
+                onClick={handleCopyAddress}
+              >
+                Copy
+              </Button>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <p className="text-sm text-default-500">Balance</p>
+            <div className="flex items-center">
+              <p>
+                {isLoading ? (
+                  <span className="flex items-center">
+                    <Spinner size="sm" className="mr-1" />
+                    Loading...
+                  </span>
+                ) : isLocalWallet ? (
+                  'N/A (Local Wallet)'
+                ) : (
+                  `${balance || '0'} XLM`
+                )}
+              </p>
+
+            </div>
+          </div>
+
+          {!isLocalWallet && (
+            <FundWithLaunchtube />
+          )}
+
+          <Divider className="my-3" />
+          
+          <div className="flex justify-between">
             <Button 
-              size="sm" 
+              color="danger"
               variant="flat"
-              color="warning"
-              className="mt-2"
               onClick={handleDisconnect}
             >
-              Disconnect and Try Again
+              Disconnect
             </Button>
+            
+            {!isLocalWallet && (
+              <Button
+                color="primary"
+                variant="flat"
+                onClick={openExplorer}
+              >
+                View on Explorer
+              </Button>
+            )}
           </div>
-        ) : (
-          <div className="bg-success-50 text-success-700 p-2 rounded-md mb-4">
-            <p className="text-sm font-medium">
-              Your wallet is connected to the Stellar testnet.
-            </p>
-          </div>
-        )}
+        </CardBody>
+      </Card>
 
-        <div className="mb-4">
-          <p className="text-sm text-default-500">Wallet Address</p>
-          <div className="flex items-center">
-            <p className="break-all">{shortenAddress(contractId)}</p>
-            <Button 
-              size="sm" 
-              variant="light"
-              className="ml-2"
-              onClick={handleCopyAddress}
-            >
-              Copy
-            </Button>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <p className="text-sm text-default-500">Balance</p>
-          <div className="flex items-center">
-            <p>
-              {isLoading ? (
-                <span className="flex items-center">
-                  <Spinner size="sm" className="mr-1" />
-                  Loading...
-                </span>
-              ) : isLocalWallet ? (
-                'N/A (Local Wallet)'
-              ) : (
-                `${balance || '0'} XLM`
-              )}
-            </p>
-
-          </div>
-        </div>
-
-        {!isLocalWallet && (
-          <FundWithLaunchtube />
-        )}
-
-        <Divider className="my-3" />
-        
-        <div className="flex justify-between">
-          <Button 
-            color="danger"
-            variant="flat"
-            onClick={handleDisconnect}
-          >
-            Disconnect
-          </Button>
-          
-          {!isLocalWallet && (
-            <Button
-              color="primary"
-              variant="flat"
-              onClick={openExplorer}
-            >
-              View on Explorer
-            </Button>
-          )}
-        </div>
-      </CardBody>
-    </Card>
+      {/* Add Dead Man's Wallet Card */}
+      {!isLocalWallet && <DeadMansWallet />}
+    </div>
   );
 };
 
