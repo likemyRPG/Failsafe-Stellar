@@ -154,70 +154,45 @@ export const registerWallet = createAsyncThunk(
             
             let kid, cid, xdr;
             
-            // Check if we should force local wallet creation
-            if (FORCE_LOCAL_WALLET) {
-                console.log("FORCE_LOCAL_WALLET is enabled, creating local wallet directly");
-                try {
-                    const result = await createLocalPasskey("Stellar Wallet", passkeyName);
-                    console.log("Local passkey creation succeeded:", result);
-                    
-                    kid = result.keyId;
-                    cid = result.contractId;
-                    // No XDR in local mode
-                } catch (error) {
-                    console.error("Local passkey creation failed:", error);
-                    throw error;
-                }
-            } else {
-                // Step 1: Create wallet with PasskeyKit
-                console.log("Creating wallet with PasskeyKit on testnet...");
-                console.log("Using PasskeyKit with network:", NETWORK_PASSPHRASE);
-                console.log("Using Soroban RPC URL:", RPC_URL);
+            // Step 1: Create wallet with PasskeyKit on testnet
+            console.log("Creating wallet with PasskeyKit on testnet...");
+            console.log("Using PasskeyKit with network:", NETWORK_PASSPHRASE);
+            console.log("Using Soroban RPC URL:", RPC_URL);
+            
+            try {
+                // Use the standard PasskeyKit demo approach on testnet
+                const result = await account.createWallet("Stellar Demo", passkeyName);
+                console.log("Wallet creation result:", result);
                 
-                try {
-                    // Use the standard PasskeyKit demo approach on testnet
-                    const result = await account.createWallet("Stellar Demo", passkeyName);
-                    console.log("Wallet creation result:", result);
+                // Extract values
+                kid = result.keyId;
+                cid = result.contractId;
+                xdr = result.signedTx;
+                
+                console.log("Extracted keyId, contractId, and xdr:", { kid, cid, hasXdr: !!xdr });
+            } catch (error) {
+                console.error("PasskeyKit wallet creation failed:", error);
+                
+                // For specific network errors, try again with different settings
+                const errorMsg = String(error);
+                const isNetworkError = 
+                    errorMsg.includes("Network") || 
+                    errorMsg.includes("Failed to fetch") ||
+                    errorMsg.includes("Cannot destructure property") ||
+                    errorMsg.includes("CORS") ||
+                    errorMsg.includes("undefined");
+                
+                if (isNetworkError) {
+                    console.log("Network error detected. Retrying with different configuration...");
+                    toast.warning("Network connection issues detected. Retrying with different settings.", {
+                        position: "top-right",
+                        autoClose: 5000,
+                    });
                     
-                    // Extract values
-                    kid = result.keyId;
-                    cid = result.contractId;
-                    xdr = result.xdr;
-                    
-                    console.log("Extracted keyId, contractId, and xdr:", { kid, cid, hasXdr: !!xdr });
-                } catch (error) {
-                    console.error("PasskeyKit wallet creation failed:", error);
-                    
-                    // For specific network errors, try local wallet as fallback
-                    const errorMsg = String(error);
-                    const isNetworkError = 
-                        errorMsg.includes("Network") || 
-                        errorMsg.includes("Failed to fetch") ||
-                        errorMsg.includes("Cannot destructure property 'length'") ||
-                        errorMsg.includes("CORS");
-                    
-                    if (isNetworkError) {
-                        console.log("Network error detected. Using local wallet as fallback");
-                        toast.warning("Network connection issues detected. Creating a local wallet instead.", {
-                            position: "top-right",
-                            autoClose: 5000,
-                        });
-                        
-                        try {
-                            const fallbackResult = await createLocalPasskey("Stellar Demo", passkeyName);
-                            console.log("Fallback passkey creation succeeded:", fallbackResult);
-                            
-                            kid = fallbackResult.keyId;
-                            cid = fallbackResult.contractId;
-                            // No XDR in fallback mode
-                        } catch (fallbackError) {
-                            console.error("Fallback passkey creation also failed:", fallbackError);
-                            throw fallbackError;
-                        }
-                    } else {
-                        // For other errors, just propagate
-                        throw error;
-                    }
+                    throw new Error("Network error creating wallet on Stellar testnet. Please try again later.");
+                } else {
+                    // For other errors, just propagate
+                    throw error;
                 }
             }
             
@@ -229,7 +204,9 @@ export const registerWallet = createAsyncThunk(
             if (xdr) {
                 try {
                     console.log("Submitting transaction with XDR:", xdr);
-                    await send_transaction(xdr);
+                    // Convert the transaction to XDR string if needed
+                    const xdrString = typeof xdr === 'string' ? xdr : xdr.toXDR();
+                    await send_transaction(xdrString);
                     console.log("Transaction submitted successfully");
                 } catch (txError) {
                     console.error("Transaction error:", txError);
@@ -241,7 +218,7 @@ export const registerWallet = createAsyncThunk(
                     });
                 }
             } else {
-                console.log("No XDR transaction to submit (local wallet)");
+                console.log("No XDR transaction to submit");
             }
 
             // Store keys and set state
@@ -255,7 +232,7 @@ export const registerWallet = createAsyncThunk(
             dispatch(setContractId(cid));
             dispatch(setConnected(true));
 
-            // Fund wallet if it's not a local wallet
+            // Only fund wallets on testnet (if they don't start with LOCAL_)
             if (!cid.startsWith("LOCAL_")) {
                 try {
                     console.log("Funding wallet...");
@@ -269,8 +246,6 @@ export const registerWallet = createAsyncThunk(
                         autoClose: 5000,
                     });
                 }
-            } else {
-                console.log("Skipping funding for local wallet:", cid);
             }
             
             return { keyId: newKeyId, contractId: cid };
@@ -317,10 +292,13 @@ export const fundWallet = createAsyncThunk(
                 progress: undefined,
             });
 
+            // Create a valid contractId payload
+            const contractIdPayload = { id: contractId };
+
             const tx = await native.transfer(
                 fundPubkey, 
                 fundSigner, 
-                contractId, 
+                contractIdPayload, // Use the formatted payload 
                 "10000000"
             );
             
@@ -328,7 +306,8 @@ export const fundWallet = createAsyncThunk(
             
             try {
                 // Submit the transaction with retry logic
-                const result = await send_transaction(tx);
+                const xdr = typeof tx === 'string' ? tx : tx.toXDR();
+                const result = await send_transaction(xdr);
                 console.log("Funding transaction submitted:", result);
                 
                 toast.dismiss(loadingToast);
@@ -376,11 +355,28 @@ export const getWalletBalance = createAsyncThunk(
     async (_, { getState }) => {
         const state = getState() as { wallet: WalletState };
         const { contractId } = state.wallet;
+        
         if (contractId) {
-            const nativeBalance = await native.balance({ id: contractId });
-            return {
-                native: nativeBalance.result.toString(),
-            };
+            // For local wallets, just return a placeholder
+            if (contractId.startsWith("LOCAL_")) {
+                return {
+                    native: "Local wallet",
+                };
+            }
+            
+            try {
+                // Use formatted contractId payload
+                const contractIdPayload = { id: contractId };
+                const nativeBalance = await native.balance(contractIdPayload);
+                return {
+                    native: nativeBalance.result.toString(),
+                };
+            } catch (error) {
+                console.error("Error fetching balance:", error);
+                return {
+                    native: "Error",
+                };
+            }
         } else {
             return {
                 native: "",
@@ -408,7 +404,9 @@ export const checkBalance = createAsyncThunk(
         try {
             console.log("Checking balance for wallet:", contractId);
             
-            const balance = await native.balance(contractId);
+            // Create proper contract ID payload
+            const contractIdPayload = { id: contractId };
+            const balance = await native.balance(contractIdPayload);
             console.log("Wallet balance:", balance);
             
             return { balance };

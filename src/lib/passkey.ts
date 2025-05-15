@@ -6,8 +6,10 @@ import { Server } from "@stellar/stellar-sdk/minimal/rpc";
 
 // Configuration constants
 export const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
+// Use correct Soroban testnet RPC endpoints - try multiple variations if needed
 export const RPC_URL = "https://soroban-testnet.stellar.org";
-export const FORCE_LOCAL_WALLET = false;
+export const FALLBACK_RPC_URL = "https://soroban-testnet.stellar.org:443";
+export const FORCE_LOCAL_WALLET = true; // Force local wallets since the testnet WASM is not available
 
 // Debug mode
 const DEBUG = true;
@@ -40,17 +42,29 @@ PasskeyKit.prototype.createWallet = async function(domain, displayName) {
 const contract = require("@stellar/stellar-sdk/contract");
 const basicNodeSigner = contract.basicNodeSigner;
 
-// Create RPC client with retry logic
-const createRpcClient = () => {
+// Get RPC client for primary or fallback server
+function createRpcClient() {
+  try {
+    // Try primary server with explicit allowHttp
+    return new Server(RPC_URL, {
+      allowHttp: true, // Explicitly allow HTTP connections
+      timeout: 30000 // 30 seconds timeout
+    });
+  } catch (e) {
+    console.warn("Failed to connect to primary RPC server:", e);
     try {
-        console.log(`Connecting to RPC at ${RPC_URL}`);
-        return new Server(RPC_URL, { allowHttp: true });
-    } catch (error) {
-        console.error(`Failed to connect to RPC at ${RPC_URL}:`, error);
-        console.warn("Using fallback RPC configuration");
-        return new Server(RPC_URL, { allowHttp: true });
+      // Try fallback server with explicit allowHttp
+      return new Server(FALLBACK_RPC_URL, {
+        allowHttp: true, // Explicitly allow HTTP connections
+        timeout: 30000 // 30 seconds timeout
+      });
+    } catch (e) {
+      console.error("Failed to connect to fallback RPC server:", e);
+      // Emergency fallback - create a basic server - still need allowHttp
+      return new Server(RPC_URL, { allowHttp: true });
     }
-};
+  }
+}
 
 export const rpc = createRpcClient();
 
@@ -73,16 +87,22 @@ export const fundSigner = basicNodeSigner(
     NETWORK_PASSPHRASE
 );
 
-// Initialize PasskeyKit with minimal configuration (similar to the demo)
+// Initialize PasskeyKit with configuration for testnet
 export const account = new PasskeyKit({
     rpcUrl: RPC_URL,
     networkPassphrase: NETWORK_PASSPHRASE,
-    timeoutInSeconds: 120
+    timeoutInSeconds: 180, // Increased timeout
+    // Use the known working hash from the environment variables
+    walletWasmHash: "ecd990f0b45ca6817149b6175f79b32efb442f35731985a084131e8265c4cd90"
+    // Note: factoryContractId is not supported in this version of PasskeyKit
+    // If wallet creation fails, you may need to use a different version of PasskeyKit
+    // that includes factory contract ID support
 });
 
+// Initialize SAC client
 export const sac = new SACClient({
-    rpcUrl: RPC_URL,
-    networkPassphrase: NETWORK_PASSPHRASE,
+  rpcUrl: RPC_URL,
+  networkPassphrase: NETWORK_PASSPHRASE
 });
 
 export const native = sac.getSACClient(
@@ -193,8 +213,16 @@ export async function createLocalPasskey(domain: string, username: string) {
         const userId = new Uint8Array(16);
         window.crypto.getRandomValues(userId);
         
-        // Create credential options following PasskeyKit demo patterns
-        const credentialOptions = {
+        // Add proper types for WebAuthn
+        interface AuthenticatorSelectionCriteria {
+            authenticatorAttachment?: 'platform' | 'cross-platform';
+            requireResidentKey?: boolean;
+            residentKey?: 'discouraged' | 'preferred' | 'required';
+            userVerification?: 'discouraged' | 'preferred' | 'required';
+        }
+        
+        // Create credential options following WebAuthn standards
+        const credentialOptions: any = {
             challenge: challenge.buffer,
             rp: {
                 name: domain || "Stellar Wallet",
@@ -210,22 +238,29 @@ export async function createLocalPasskey(domain: string, username: string) {
                 { type: "public-key", alg: -257 } // RS256
             ],
             timeout: 60000,
-            attestation: "direct",
+            attestation: "direct" as const,
             authenticatorSelection: {
-                authenticatorAttachment: "platform",
+                authenticatorAttachment: "platform" as const,
                 requireResidentKey: true,
-                residentKey: "required",
-                userVerification: "required"
+                residentKey: "required" as const,
+                userVerification: "required" as const
             }
         };
         
         // Create the credential
         const credential = await navigator.credentials.create({
             publicKey: credentialOptions
-        }) as PublicKeyCredential;
+        });
+        
+        if (!credential) {
+            throw new Error("Failed to create credential");
+        }
+        
+        // Cast to PublicKeyCredential type
+        const pkCredential = credential as any;
         
         // Extract information for creating a local wallet
-        const keyId = credential.id;
+        const keyId = pkCredential.id;
         const contractId = `LOCAL_${keyId.substring(0, 20)}`;
         
         console.log("Local passkey created successfully:", { 
@@ -236,7 +271,7 @@ export async function createLocalPasskey(domain: string, username: string) {
         return { 
             keyId, 
             contractId, 
-            credential 
+            credential: pkCredential
         };
     } catch (error) {
         console.error("Error creating local passkey:", error);

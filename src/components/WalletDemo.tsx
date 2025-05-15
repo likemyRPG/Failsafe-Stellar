@@ -18,6 +18,7 @@ import { RegisterView } from "./RegisterView";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StyledPaper } from "./StyledComponents";
+import { toast } from "react-toastify";
 
 type ViewState = "initial" | "connect" | "register";
 
@@ -55,6 +56,13 @@ const WalletDemo: React.FC = () => {
                         alert("Please enter a name for your passkey.");
                         return;
                     }
+                    
+                    // Show toast notification for local wallet creation
+                    toast.info("Creating local wallet - no blockchain connection needed", {
+                        position: "top-right",
+                        autoClose: 5000,
+                    });
+                    
                     await dispatch(registerWallet(passkeyName)).unwrap();
                 } else {
                     await dispatch(connectWallet()).unwrap();
@@ -62,9 +70,15 @@ const WalletDemo: React.FC = () => {
             } catch (error) {
                 console.error("Failed to connect:", error);
                 
-                // More specific error handling based on error message
+                // Show more user-friendly error for common WebAuthn errors
                 if (error instanceof Error) {
-                    alert(`Connection error: ${error.message}`);
+                    if (error.name === "NotAllowedError") {
+                        alert("Authentication was cancelled or timed out. Please try again.");
+                    } else if (error.name === "NotSupportedError") {
+                        alert("Your browser doesn't support WebAuthn/passkeys. Please use a modern browser like Chrome, Edge, or Safari.");
+                    } else {
+                        alert(`Connection error: ${error.message}`);
+                    }
                 } else if (typeof error === 'string') {
                     alert(error);
                 } else {
