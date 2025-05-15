@@ -832,8 +832,8 @@ export const disconnectWallet = createAsyncThunk(
     async (_, { dispatch }) => {
         console.log("Disconnecting wallet");
         
-        localStorage.removeItem("keyId");
-        localStorage.removeItem("contractId");
+        // localStorage.removeItem("keyId");
+        // localStorage.removeItem("contractId");
         
         dispatch(setKeyId(null));
         dispatch(setContractId(null));
