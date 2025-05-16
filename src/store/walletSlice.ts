@@ -1427,7 +1427,7 @@ export const checkInDeadMansWallet = createAsyncThunk(
                 
                 // Display success message to the user
                 toast.success("Check-in successful!", {
-                    position: "top-right",
+                    position: "bottom-right",
                     autoClose: 5000,
                     hideProgressBar: false,
                     closeOnClick: true,

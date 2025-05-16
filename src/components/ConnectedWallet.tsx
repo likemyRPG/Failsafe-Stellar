@@ -90,7 +90,6 @@ const ConnectedWallet = () => {
     setCheckingIn(true);
     try {
       await dispatch(checkInDeadMansWallet() as any).unwrap();
-      toast.success("Successfully checked in");
     } catch (error) {
       console.error("Check-in error:", error);
       toast.error("Failed to check in");
