@@ -165,15 +165,15 @@ export const send_transaction = async (xdr: string, fee = 10_000, maxRetries = 3
         
         console.error("Transaction submission failed:", error);
         
-        toast.error("Transaction failed. Please try again.", {
-            position: "top-right",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-        });
+        // toast.error("Transaction failed. Please try again.", {
+        //     position: "top-right",
+        //     autoClose: 5000,
+        //     hideProgressBar: false,
+        //     closeOnClick: true,
+        //     pauseOnHover: true,
+        //     draggable: true,
+        //     progress: undefined,
+        // });
         
         throw error;
     }

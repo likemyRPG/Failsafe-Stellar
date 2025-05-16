@@ -150,7 +150,6 @@ export const DecoratedHeader = ({ children, className = "" }: { children: ReactN
     <h1 className={`relative z-10 text-2xl font-bold text-gray-800 dark:text-gray-100 ${className}`}>
         <span className="relative inline-block">
             {children}
-            <span className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-[var(--accent-gradient-from)] to-[var(--accent-gradient-to)] rounded-full"></span>
         </span>
     </h1>
 );

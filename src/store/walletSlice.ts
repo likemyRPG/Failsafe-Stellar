@@ -271,11 +271,11 @@ export const registerWallet = createAsyncThunk(
                 } catch (txError) {
                     console.error("Transaction error:", txError);
                     
-                    // If transaction fails, we might still be able to use the wallet
-                    toast.warning("Transaction couldn't be submitted, but wallet was created. It may need funding.", {
-                        position: "top-right",
-                        autoClose: 5000,
-                    });
+                    // // If transaction fails, we might still be able to use the wallet
+                    // toast.warning("Transaction couldn't be submitted, but wallet was created. It may need funding.", {
+                    //     position: "top-right",
+                    //     autoClose: 5000,
+                    // });
                 }
             } else {
                 console.log("No XDR transaction to submit");

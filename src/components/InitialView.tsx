@@ -19,11 +19,6 @@ export const InitialView: React.FC<InitialViewProps> = ({ onConnectClick }) => {
         </div>
       </div>
 
-      <TabContainer>
-        <TabButton active>How it works</TabButton>
-        <TabButton>Benefits</TabButton>
-      </TabContainer>
-
       <div className="relative">
         <div className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-700/50 p-3 shadow-sm">
           <ol className="space-y-1.5 text-sm text-foreground-700 dark:text-gray-300 pl-7 relative">
