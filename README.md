@@ -3,13 +3,22 @@
 ## Demo, UI & Canva slides
 UI Screenshots: [https://imgur.com/a/sj8zbSl](https://imgur.com/a/sj8zbSl)
 Demo Video: 
-Canva Slides: 
+Canva Slides: [Canva](https://www.canva.com/design/DAGnklFAg7s/RR3wNpstzNrX09b9jgiE0g/edit?utm_content=DAGnklFAg7s&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
 ## Problem Statement
 
-**Problem**: Many individuals hold crypto assets but worry about "What happens if I suddenly become inactive or incapacitated?" Typically, that risk is mitigated by manually sharing private keys or partial custody. This is insecure, cumbersome, and prone to human error.
+**Problem**: Many individuals hold crypto assets but face two critical risks:
 
-**Solution**: **Dead Man's Wallet** automatically detects user inactivity on-chain and transfers their funds to a chosen beneficiary if they fail to "check in" within a specified timeframe. A "revive window" allows the user to cancel the process if they become active again.
+1. **Key Loss**: Users frequently lose access to their private keys through device failure, forgotten passwords, or lost seed phrases. Industry research estimates over 20% of all Bitcoin (worth billions) is permanently inaccessible due to lost keys.
+
+2. **Unexpected Incapacitation**: If a holder becomes suddenly inactive or incapacitated, their assets remain locked without a contingency plan. Typical solutions involve manually sharing private keys or partial custody, which is insecure, cumbersome, and prone to human error.
+
+**Solution**: **Dead Man's Wallet** addresses both issues by:
+
+- Creating a "safety net" that automatically detects user inactivity on-chain and transfers funds to chosen beneficiaries
+- Providing passkey-based authentication to eliminate seed phrase and private key management completely
+- Allowing recovery through a "revive window" if the user regains access
+- Requiring simple "check-ins" rather than complex key management
 
 **Intelligent Distribution**: Our solution offers two distribution methods:
 1. **Direct Assignment**: Manually select specific beneficiaries for your assets
@@ -25,15 +34,16 @@ This AI-driven approach ensures your assets are distributed according to your cu
 
 ## Impact
 
-* **Secure Estate Transfer**: Eliminates worry about lost crypto in the event a user can no longer manage their wallet.
+* **Prevent Permanent Key Loss**: Eliminates the risk of permanently losing access to crypto assets due to lost or forgotten private keys by using passkey authentication instead.
+* **Secure Estate Transfer**: Ensures crypto assets aren't lost in the event a user can no longer manage their wallet, whether due to death, disability, or extended absence.
 * **User-Friendly**: Simple "check-in" function that can be triggered from a front-end or even automatically via reminders or push notifications.
 * **No Third Party**: Everything is enforced by a Soroban (Stellar) smart contract, removing the need to trust an intermediary.
 
 ## Why Stellar? (Featuring Passkeys)
 
 * **Soroban**: Stellar's new smart contract platform is fast, low-fee, and developer-friendly.
-* **Passkeys**: We leverage [**Passkey Kit**](https://github.com/kalepail/passkey-kit) to let users sign and authenticate quickly, **replacing** cumbersome private keys with FIDO2/WebAuthn-based passkeys.
-* **Seamless UX**: By using **Passkeys** and **Launchtube** for frictionless wallet creation, users can manage their "Dead Man's Wallet" with just a few taps—no need to store a separate seed phrase or private key.
+* **Passkeys**: We leverage [**Passkey Kit**](https://github.com/kalepail/passkey-kit) to let users sign and authenticate quickly, **replacing** cumbersome private keys with FIDO2/WebAuthn-based passkeys. This eliminates the risk of lost seed phrases or private keys entirely.
+* **Seamless UX**: By using **Passkeys** and **Launchtube** for frictionless wallet creation, users can manage their "Dead Man's Wallet" with just a few taps—no need to store a separate seed phrase or private key that could be lost.
 * **Worldwide Reach**: Stellar's payment rails allow beneficiaries to move funds or swap them into local currencies easily.
 
 ## Experience Building on Stellar
@@ -72,7 +82,8 @@ Overall, the developer ecosystem is evolving rapidly, and we overcame some versi
    * Revive function to reclaim wallet if within grace period
    * Finalize function to transfer funds to beneficiary
    * **AI-powered fund distribution** that adapts to life events and relationship changes
-   * **Passkeys integration** for user authentication
+   * **Passkeys integration** for user authentication without risk of lost private keys
+   * **No seed phrases to manage or lose** - authentication via device biometrics only
    * Deployed to **Stellar Testnet** with **Launchtube**
    * Events for monitoring (register, check_in, trigger, revive, finalize)
 
