@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { WalletState, checkInDeadMansWallet } from '../store/walletSlice';
@@ -13,6 +13,9 @@ export const useDeadMansWallet = () => {
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [isUrgent, setIsUrgent] = useState(false);
   const [timeExpired, setTimeExpired] = useState(false);
+  
+  // Track which notifications have been shown
+  const shownNotifications = useRef<{[key: string]: boolean}>({});
   
   // Calculate days remaining and check expiration status
   useEffect(() => {
@@ -35,31 +38,39 @@ export const useDeadMansWallet = () => {
       
       // Show notification for urgent check-ins
       if (differenceDays === 3) {
-        toast.warning(`Your dead man's wallet check-in is due in 3 days!`, {
-          position: "top-right",
-          autoClose: 10000,
-          style: {
-            background: "linear-gradient(to right, #f0f9ff, #e0f2fe)",
-            color: "#0369a1",
-            border: "1px solid #bae6fd",
-            borderRadius: "0.75rem",
-            padding: "12px 16px",
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
-          }
-        });
+        const notificationKey = `3days-${deadline.toISOString()}`;
+        if (!shownNotifications.current[notificationKey]) {
+          shownNotifications.current[notificationKey] = true;
+          toast.warning(`Your failsafe check-in is due in 3 days!`, {
+            position: "bottom-right",
+            autoClose: 10000,
+            style: {
+              background: "linear-gradient(to right, #f0f9ff, #e0f2fe)",
+              color: "#0369a1",
+              border: "1px solid #bae6fd",
+              borderRadius: "0.75rem",
+              padding: "12px 16px",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+            }
+          });
+        }
       } else if (differenceDays === 1) {
-        toast.error(`Your dead man's wallet check-in is due TOMORROW!`, {
-          position: "top-right",
-          autoClose: false,
-          style: {
-            background: "linear-gradient(to right, #fee2e2, #fecaca)",
-            color: "#b91c1c",
-            border: "1px solid #fca5a5",
-            borderRadius: "0.75rem",
-            padding: "12px 16px",
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
-          }
-        });
+        const notificationKey = `1day-${deadline.toISOString()}`;
+        if (!shownNotifications.current[notificationKey]) {
+          shownNotifications.current[notificationKey] = true;
+          toast.error(`Your failsafe check-in is due TOMORROW!`, {
+            position: "bottom-right",
+            autoClose: false,
+            style: {
+              background: "linear-gradient(to right, #fee2e2, #fecaca)",
+              color: "#b91c1c",
+              border: "1px solid #fca5a5",
+              borderRadius: "0.75rem",
+              padding: "12px 16px",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+            }
+          });
+        }
       } else if (differenceDays <= 0) {
         // Create different messages based on configuration
         const aiMessage = deadMansWallet.aiEnabled 
@@ -70,36 +81,44 @@ export const useDeadMansWallet = () => {
           ? ` Funds will be distributed to ${deadMansWallet.beneficiaries.length} beneficiaries.`
           : '';
         
-        toast.error(`Your check-in deadline has EXPIRED! ${aiMessage}${beneficiariesMessage}`, {
-          position: "top-right",
-          autoClose: false,
-          style: {
-            background: "linear-gradient(to right, #7f1d1d, #991b1b)",
-            color: "#fef2f2",
-            border: "1px solid #b91c1c",
-            borderRadius: "0.75rem",
-            padding: "12px 16px", 
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)"
-          }
-        });
+        const notificationKey = `expired-${deadline.toISOString()}`;
+        if (!shownNotifications.current[notificationKey]) {
+          shownNotifications.current[notificationKey] = true;
+          toast.error(`Your check-in deadline has EXPIRED! ${aiMessage}${beneficiariesMessage}`, {
+            position: "bottom-right",
+            autoClose: false,
+            style: {
+              background: "linear-gradient(to right, #7f1d1d, #991b1b)",
+              color: "#fef2f2",
+              border: "1px solid #b91c1c",
+              borderRadius: "0.75rem",
+              padding: "12px 16px", 
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)"
+            }
+          });
+        }
         
         // If AI is enabled and time expired, notify user about AI activation
         if (deadMansWallet.aiEnabled && deadMansWallet.aiPrompt) {
-          setTimeout(() => {
-            const promptText = deadMansWallet.aiPrompt || '';
-            toast.info(`AI assistant is executing with your instructions: "${promptText.substring(0, 50)}${promptText.length > 50 ? '...' : ''}"`, {
-              position: "top-right",
-              autoClose: false,
-              style: {
-                background: "linear-gradient(to right, #0f172a, #1e293b)",
-                color: "#e2e8f0",
-                border: "1px solid #334155",
-                borderRadius: "0.75rem",
-                padding: "12px 16px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)"
-              }
-            });
-          }, 3000);
+          const aiNotificationKey = `ai-${deadline.toISOString()}`;
+          if (!shownNotifications.current[aiNotificationKey]) {
+            shownNotifications.current[aiNotificationKey] = true;
+            setTimeout(() => {
+              const promptText = deadMansWallet.aiPrompt || '';
+              toast.info(`AI assistant is executing with your instructions: "${promptText.substring(0, 50)}${promptText.length > 50 ? '...' : ''}"`, {
+                position: "bottom-right",
+                autoClose: false,
+                style: {
+                  background: "linear-gradient(to right, #0f172a, #1e293b)",
+                  color: "#e2e8f0",
+                  border: "1px solid #334155",
+                  borderRadius: "0.75rem",
+                  padding: "12px 16px",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)"
+                }
+              });
+            }, 3000);
+          }
         }
       }
     };
@@ -133,7 +152,7 @@ export const useDeadMansWallet = () => {
     }
     
     if (!deadMansWallet.isConfigured) {
-      toast.error("Dead man's wallet not configured");
+      toast.error("Failsafe not configured");
       return;
     }
     
@@ -143,7 +162,7 @@ export const useDeadMansWallet = () => {
       
       // Show success message
       toast.success("Check-in successful! Your funds are safe.", {
-        position: "top-right",
+        position: "bottom-right",
         autoClose: 5000,
         style: {
           background: "linear-gradient(to right, #ecfdf5, #d1fae5)",
@@ -166,7 +185,7 @@ export const useDeadMansWallet = () => {
       }
       
       toast.error(errorMessage, {
-        position: "top-right",
+        position: "bottom-right",
         autoClose: 8000,
         style: {
           background: "linear-gradient(to right, #fee2e2, #fecaca)",

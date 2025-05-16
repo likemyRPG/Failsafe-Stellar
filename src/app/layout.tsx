@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dead Man's Wallet | Stellar Blockchain",
+  title: "Failsafe | Stellar Blockchain",
   description: "A secure dead man's switch for your Stellar assets - ensuring your funds reach the right people in case of inactivity",
 };
 

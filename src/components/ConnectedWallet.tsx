@@ -83,7 +83,7 @@ const ConnectedWallet = () => {
 
   const handleCheckIn = async () => {
     if (!deadMansWallet.isConfigured) {
-      toast.error("Dead Man's Wallet is not configured");
+      toast.error("Failsafe is not configured");
       return;
     }
     
@@ -235,7 +235,7 @@ const ConnectedWallet = () => {
                 <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
                   <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Dead Man's Switch Status</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Failsafe Status</p>
                       <div className="flex items-center mt-1">
                         <Badge color={getCheckInColor()}>
                           {getCheckInStatus()}

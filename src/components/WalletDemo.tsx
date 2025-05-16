@@ -167,7 +167,7 @@ const WalletDemo: React.FC = () => {
                             </svg>
                         </div>
                         <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                            Dead Man's Wallet
+                            Failsafe
                         </h1>
                     </div>
                 </div>

@@ -162,9 +162,9 @@ const DeadMansWallet: React.FC = () => {
       }) as any).unwrap();
       
       onClose(); // Close the modal
-      toast.success("Dead man's wallet configured successfully!");
+      toast.success("Failsafe configured successfully!");
     } catch (error) {
-      console.error("Error configuring dead man's wallet:", error);
+      console.error("Error configuring failsafe:", error);
       toast.error("Failed to configure wallet settings");
     }
   };
@@ -249,7 +249,7 @@ const DeadMansWallet: React.FC = () => {
   return (
     <Card>
       <CardHeader className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Dead Man's Wallet</h3>
+        <h3 className="text-lg font-medium">Failsafe</h3>
         {deadMansWallet.isConfigured && (
           <Badge 
             color={getBadgeColor()} 
@@ -280,7 +280,7 @@ const DeadMansWallet: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Dead Man's Switch Status</h3>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Failsafe Status</h3>
                 </div>
                 
                 <div className="p-4 space-y-3">
@@ -442,9 +442,9 @@ const DeadMansWallet: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Dead Man's Switch Not Configured</h3>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Failsafe Not Configured</h3>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
-                    Set up a dead man's switch to automatically transfer your funds if you don't check in regularly.
+                    Set up a failsafe to automatically transfer your funds if you don't check in regularly.
                   </p>
                   <Button
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs"
@@ -469,7 +469,7 @@ const DeadMansWallet: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Configure Dead Man's Wallet</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Configure Failsafe</h3>
               </div>
             </ModalHeader>
             <ModalBody className="px-5 py-4">
