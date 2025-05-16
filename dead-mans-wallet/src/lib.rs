@@ -1,5 +1,19 @@
 #![no_std]
 
+//! Dead Man's Wallet Smart Contract
+//! 
+//! This contract implements a "dead man's switch" mechanism for managing digital assets.
+//! It allows users to designate beneficiaries who will receive their assets if they
+//! fail to check in within a specified timeout period.
+//! 
+//! Key features:
+//! - User registration with beneficiary and timeout settings
+//! - Regular check-ins to maintain active status
+//! - Automatic triggering when user becomes inactive
+//! - Revival window for users to reclaim control
+//! - Finalization process to transfer assets to beneficiaries
+//! - Support for single or multiple beneficiaries
+
 use soroban_sdk::{
     // Soroban SDK (22.0.x) in no_std mode
     contract, contractimpl, contracttype,
@@ -7,42 +21,72 @@ use soroban_sdk::{
     Address, Env, Vec, Symbol,
 };
 
-// Replace with your actual 32-byte token contract ID:
+/// The contract ID of the token that will be managed by this wallet.
+/// This should be replaced with the actual token contract ID in production.
 const TOKEN_CONTRACT_ID: &str = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
 
-// We can't store a &str as key in 22.0.x, so let's define a Symbol constant:
+/// Storage key for the registry of all registered users
 const REGISTERED_USERS_KEY: Symbol = symbol_short!("registry");
 
-/// Data stored for each user.
+/// Represents the data stored for each registered user
 #[contracttype]
 #[derive(Clone)]
 pub struct UserData {
+    /// The address that will receive the assets if the user becomes inactive
     pub beneficiary: Address,
+    /// Time period (in seconds) after which the wallet can be triggered if no check-in
     pub timeout: u64,
+    /// Time window (in seconds) during which the user can revive after triggering
     pub revive_window: u64,
+    /// Timestamp of the user's last check-in
     pub last_checkin: u64,
+    /// Timestamp when the wallet was triggered (if applicable)
     pub triggered_at: Option<u64>,
+    /// Whether the wallet has been finalized and assets distributed
     pub finalized: bool,
 }
 
-/// Load/store user data keyed by their address.
+/// Loads user data from persistent storage
+/// 
+/// # Arguments
+/// * `env` - The contract environment
+/// * `user` - The address of the user
+/// 
+/// # Returns
+/// * `Option<UserData>` - The user's data if they are registered, None otherwise
 fn load_user_data(env: &Env, user: &Address) -> Option<UserData> {
     env.storage().persistent().get(user)
 }
 
+/// Saves user data to persistent storage
+/// 
+/// # Arguments
+/// * `env` - The contract environment
+/// * `user` - The address of the user
+/// * `data` - The user data to store
 fn save_user_data(env: &Env, user: &Address, data: &UserData) {
     env.storage().persistent().set(user, data);
 }
 
-/// Load/store a global registry of user addresses. We use `REGISTERED_USERS_KEY` (a Symbol).
+/// Loads the registry of all registered user addresses
+/// 
+/// # Arguments
+/// * `env` - The contract environment
+/// 
+/// # Returns
+/// * `Vec<Address>` - Vector of all registered user addresses
 fn load_registry(env: &Env) -> Vec<Address> {
-    // No `unwrap_or_default()`, so do `unwrap_or_else(...)`.
     env.storage()
         .persistent()
         .get::<Symbol, Vec<Address>>(&REGISTERED_USERS_KEY)
         .unwrap_or_else(|| Vec::new(env))
 }
 
+/// Saves the registry of all registered user addresses
+/// 
+/// # Arguments
+/// * `env` - The contract environment
+/// * `registry` - The registry to store
 fn save_registry(env: &Env, registry: &Vec<Address>) {
     env.storage()
         .persistent()
@@ -54,7 +98,18 @@ pub struct DeadMansWallet;
 
 #[contractimpl]
 impl DeadMansWallet {
-    /// Register a user with beneficiary, timeouts, etc.
+    /// Registers a new user with their beneficiary and timeout settings
+    /// 
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user to register
+    /// * `beneficiary` - The address that will receive the assets if the user becomes inactive
+    /// * `timeout` - Time period (in seconds) after which the wallet can be triggered
+    /// * `revive_window` - Time window (in seconds) during which the user can revive after triggering
+    /// 
+    /// # Panics
+    /// * If timeout or revive_window is zero
+    /// * If the user is already registered
     pub fn register(env: Env, user: Address, beneficiary: Address, timeout: u64, revive_window: u64) {
         // Validate inputs
         if timeout == 0 {
@@ -90,7 +145,15 @@ impl DeadMansWallet {
         env.events().publish((symbol_short!("register"), user.clone()), data.timeout);
     }
 
-    /// Check-in updates last_checkin
+    /// Updates the user's last check-in timestamp
+    /// 
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user checking in
+    /// 
+    /// # Panics
+    /// * If the user is not registered
+    /// * If the wallet has already been finalized
     pub fn check_in(env: Env, user: Address) {
         let mut data = load_user_data(&env, &user).expect("User not registered");
         if data.finalized {
@@ -103,7 +166,17 @@ impl DeadMansWallet {
         env.events().publish((symbol_short!("check_in"), user.clone()), data.last_checkin);
     }
 
-    /// Trigger if user is inactive
+    /// Triggers the wallet if the user has been inactive beyond their timeout period
+    /// 
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user to trigger
+    /// 
+    /// # Panics
+    /// * If the user is not registered
+    /// * If the wallet has already been finalized
+    /// * If the wallet has already been triggered
+    /// * If the user is still within their timeout period
     pub fn trigger(env: Env, user: Address) {
         let mut data = load_user_data(&env, &user).expect("User not registered");
         if data.finalized {
@@ -124,7 +197,17 @@ impl DeadMansWallet {
         env.events().publish((symbol_short!("trigger"), user.clone()), now);
     }
 
-    /// Revive if within the window
+    /// Allows the user to revive their wallet if within the revival window
+    /// 
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user to revive
+    /// 
+    /// # Panics
+    /// * If the user is not registered
+    /// * If the wallet has already been finalized
+    /// * If the wallet has not been triggered
+    /// * If the revival window has passed
     pub fn revive(env: Env, user: Address) {
         let mut data = load_user_data(&env, &user).expect("User not registered");
         if data.finalized {
@@ -146,7 +229,18 @@ impl DeadMansWallet {
         }
     }
 
-    /// Finalize after the window, transferring user's funds to the beneficiary
+    /// Finalizes the wallet and transfers assets to the beneficiary
+    /// 
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user to finalize
+    /// * `amount` - The amount of tokens to transfer
+    /// 
+    /// # Panics
+    /// * If the user is not registered
+    /// * If the wallet has already been finalized
+    /// * If the wallet has not been triggered
+    /// * If the revival window has not passed
     pub fn finalize(env: Env, user: Address, amount: i128) {
         let mut data = load_user_data(&env, &user).expect("User not registered");
         if data.finalized {
@@ -171,8 +265,21 @@ impl DeadMansWallet {
         env.events().publish((symbol_short!("aiSig"), user.clone()), data.beneficiary.clone());
     }
 
-    /// Finalize with multiple beneficiaries determined by admin/AI
-    /// This allows distributing funds to multiple beneficiaries with different percentages
+    /// Finalizes the wallet and distributes assets to multiple beneficiaries
+    /// 
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user to finalize
+    /// * `beneficiaries` - Vector of beneficiary addresses
+    /// * `amounts` - Vector of amounts to transfer to each beneficiary
+    /// 
+    /// # Panics
+    /// * If the user is not registered
+    /// * If the wallet has already been finalized
+    /// * If the wallet has not been triggered
+    /// * If the revival window has not passed
+    /// * If beneficiaries and amounts vectors have different lengths
+    /// * If no beneficiaries are provided
     pub fn finalize_admin(env: Env, user: Address, beneficiaries: Vec<Address>, amounts: Vec<i128>) {
         // Validate inputs
         if beneficiaries.len() != amounts.len() {
@@ -217,16 +324,41 @@ impl DeadMansWallet {
         }
     }
 
-    // Return the user's stored data (if any)
+    /// Retrieves the stored data for a user
+    /// 
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user to query
+    /// 
+    /// # Returns
+    /// * `Option<UserData>` - The user's data if they are registered, None otherwise
     pub fn get_user_data(env: Env, user: Address) -> Option<UserData> {
         load_user_data(&env, &user)
     }
 
-    // Return the entire registry of addresses
+    /// Returns a list of all registered user addresses
+    /// 
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// 
+    /// # Returns
+    /// * `Vec<Address>` - Vector of all registered user addresses
     pub fn list_users(env: Env) -> Vec<Address> {
         load_registry(&env)
     }
 
+    /// Returns the current status of a user's wallet
+    /// 
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user to query
+    /// 
+    /// # Returns
+    /// * `Symbol` - The status of the wallet:
+    ///   - "none" if not registered
+    ///   - "finalized" if assets have been distributed
+    ///   - "triggered" if the wallet has been triggered but not finalized
+    ///   - "active" if the wallet is in normal operation
     pub fn get_status(env: Env, user: Address) -> Symbol {
         match load_user_data(&env, &user) {
             None => symbol_short!("none"),

@@ -2,6 +2,8 @@
 
 Failsafe is a smart contract solution built on Stellar's Soroban platform, designed to provide secure and automated estate planning for crypto assets. By leveraging Stellar's fast, low-cost infrastructure and Soroban's Rust-based smart contracts, we've created a system that ensures your digital assets are protected and properly distributed in case of unexpected events.
 
+[Learn more about why we built Failsafe →](WHY.md)
+
 **Topics**: `stellar`, `rust`, `smart-contracts`, `consensus-toronto-2025`
 
 ## Demo, UI & Canva slides
@@ -69,7 +71,7 @@ Overall, the developer ecosystem is evolving rapidly, and we overcame some versi
 
 ## Public Code Repository
 
-**URL**: [https://github.com/likemyRPG/broke](https://github.com/likemyRPG/broke)
+**URL**: [https://github.com/likemyRPG/Failsafe-Stellar](https://github.com/likemyRPG/Failsafe-Stellar)
 
 * **Description**: "Failsafe on Stellar: A Soroban-based inactivity protocol with Passkeys integration for secure, user-friendly estate transfer."
 * **Keywords/Topics**:
@@ -95,9 +97,9 @@ Overall, the developer ecosystem is evolving rapidly, and we overcame some versi
 
 2. **List of Technologies**:
    * **Soroban (Rust)** for the smart contract
-   * **js-stellar-sdk** for the front-end interactions
-   * **Passkey Kit** for user authentication
-   * **Launchtube** for contract deployment
+   * [**js-stellar-sdk**](https://github.com/stellar/js-stellar-sdk) for the front-end interactions
+   * [**Passkey Kit**](https://github.com/kalepail/passkey-kit) for user authentication using
+   * [**Launchtube**](https://github.com/stellar/launchtube) for contract deployment
    * React + TypeScript for the UI
    * GitHub Actions for automated builds/tests (optional)
 
@@ -154,16 +156,46 @@ Overall, the developer ecosystem is evolving rapidly, and we overcame some versi
 ## Design Choices
 
 * **Storage**:
-  * We store `UserData` in Soroban's contract storage keyed by `Address`.
-  * This ensures all logic is on-chain, no external DB needed for core features.
+  * **Smart Contract Storage**: We use Soroban's persistent storage to maintain critical contract state:
+    * `UserData` struct stored per user address containing:
+      * Beneficiary address
+      * Timeout period
+      * Revival window
+      * Last check-in timestamp
+      * Trigger status
+      * Finalization status
+    * Global registry of all registered user addresses
+  * **MySQL Database**: We use a MySQL database with Prisma ORM to store additional data and enable faster querying for the frontend:
+    * `DeadMansWallet`: Stores wallet configurations, check-in periods, and deadlines
+    * `Beneficiary`: Manages beneficiary information and share percentages
+    * `AiProfile`: Stores AI configuration for intelligent distribution
+    * `AiOutput`: Caches AI-generated distribution results
+    * `LogEntry`: Maintains an audit trail of wallet activities
+  * This hybrid approach combines the security of on-chain storage with the performance benefits of a traditional database.
+
 * **Events**:
-  * We emit events (`register`, `check_in`, `trigger`, `revive`, `finalize`) to enable off-chain monitoring or indexing.
+  * We emit the following events for monitoring and indexing:
+    * `register`: When a user registers with their timeout settings
+    * `check_in`: When a user performs a check-in
+    * `trigger`: When a wallet is triggered due to inactivity
+    * `revive`: When a user revives their wallet within the revival window
+    * `finalize`: When assets are transferred to beneficiaries
+    * `aiSig`: When AI-based distribution is triggered
+    * `finAdm`: When admin finalization occurs
+    * `dist`: When funds are distributed to individual beneficiaries
+
 * **Passkeys Implementation**:
-  * We rely on `passkey-kit` for FIDO2-based key creation and signing.
-  * This simplifies user login while letting them sign Soroban transactions without manually handling private keys.
+  * We leverage [Passkey Kit](https://github.com/kalepail/passkey-kit) for FIDO2/WebAuthn-based authentication
+  * Users can authenticate using their device's biometrics or security key
+  * No seed phrases or private keys to manage or lose
+  * Secure signing of Soroban transactions without manual key handling
+  * Seamless integration with the frontend for a frictionless user experience
+
 * **Challenges Overcome**:
-  * **Reference-types** issues while compiling. We disabled them for Soroban.
-  * **No `env.caller()`** in older Soroban SDK versions. We pass user addresses explicitly.
+  * **Rust Learning Curve**: Adapted to Rust's strict type system and ownership model
+  * **Soroban Environment**: Worked within Soroban's `no_std` environment constraints
+  * **Storage Limitations**: Implemented efficient storage patterns using Soroban's persistent storage
+  * **Multi-beneficiary Support**: Implemented complex distribution logic while maintaining security
 
 ---
 
