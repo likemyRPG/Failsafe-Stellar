@@ -34,7 +34,7 @@ if (typeof window !== 'undefined') {
 export const networks = {
   testnet: {
     networkPassphrase: "Test SDF Network ; September 2015",
-    contractId: "CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF",
+    contractId: "CBF4ACGDRL47K65642Z7HUG6EDVQXH4WZGTJAROYJ77O677RYIDSKTIL",
   }
 } as const
 
@@ -162,6 +162,28 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
+   * Construct and simulate a finalize_admin transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Finalize with multiple beneficiaries determined by admin/AI
+   * This allows distributing funds to multiple beneficiaries with different percentages
+   */
+  finalize_admin: ({user, beneficiaries, amounts}: {user: string, beneficiaries: Array<string>, amounts: Array<i128>}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
    * Construct and simulate a get_user_data transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   get_user_data: ({user}: {user: string}, options?: {
@@ -245,6 +267,7 @@ export class Client extends ContractClient {
         "AAAAAAAAABtUcmlnZ2VyIGlmIHVzZXIgaXMgaW5hY3RpdmUAAAAAB3RyaWdnZXIAAAAAAQAAAAAAAAAEdXNlcgAAABMAAAAA",
         "AAAAAAAAABtSZXZpdmUgaWYgd2l0aGluIHRoZSB3aW5kb3cAAAAABnJldml2ZQAAAAAAAQAAAAAAAAAEdXNlcgAAABMAAAAA",
         "AAAAAAAAAEdGaW5hbGl6ZSBhZnRlciB0aGUgd2luZG93LCB0cmFuc2ZlcnJpbmcgdXNlcidzIGZ1bmRzIHRvIHRoZSBiZW5lZmljaWFyeQAAAAAIZmluYWxpemUAAAACAAAAAAAAAAR1c2VyAAAAEwAAAAAAAAAGYW1vdW50AAAAAAALAAAAAA==",
+        "AAAAAAAAAI9GaW5hbGl6ZSB3aXRoIG11bHRpcGxlIGJlbmVmaWNpYXJpZXMgZGV0ZXJtaW5lZCBieSBhZG1pbi9BSQpUaGlzIGFsbG93cyBkaXN0cmlidXRpbmcgZnVuZHMgdG8gbXVsdGlwbGUgYmVuZWZpY2lhcmllcyB3aXRoIGRpZmZlcmVudCBwZXJjZW50YWdlcwAAAAAOZmluYWxpemVfYWRtaW4AAAAAAAMAAAAAAAAABHVzZXIAAAATAAAAAAAAAA1iZW5lZmljaWFyaWVzAAAAAAAD6gAAABMAAAAAAAAAB2Ftb3VudHMAAAAD6gAAAAsAAAAA",
         "AAAAAAAAAAAAAAANZ2V0X3VzZXJfZGF0YQAAAAAAAAEAAAAAAAAABHVzZXIAAAATAAAAAQAAA+gAAAfQAAAACFVzZXJEYXRh",
         "AAAAAAAAAAAAAAAKbGlzdF91c2VycwAAAAAAAAAAAAEAAAPqAAAAEw==",
         "AAAAAAAAAAAAAAAKZ2V0X3N0YXR1cwAAAAAAAQAAAAAAAAAEdXNlcgAAABMAAAABAAAAEQ==" ]),
@@ -257,6 +280,7 @@ export class Client extends ContractClient {
         trigger: this.txFromJSON<null>,
         revive: this.txFromJSON<null>,
         finalize: this.txFromJSON<null>,
+        finalize_admin: this.txFromJSON<null>,
         get_user_data: this.txFromJSON<Option<UserData>>,
         list_users: this.txFromJSON<Array<string>>,
         get_status: this.txFromJSON<string>
