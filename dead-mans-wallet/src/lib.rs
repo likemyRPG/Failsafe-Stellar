@@ -199,7 +199,7 @@ impl DeadMansWallet {
         
         // Iterate through beneficiaries and amounts
         for i in 0..beneficiaries.len() {
-            if amounts.get(i).unwrap() > &0 {
+            if amounts.get(i).unwrap() > 0 {
                 token_client.transfer(&user, &beneficiaries.get(i).unwrap(), &amounts.get(i).unwrap());
             }
         }

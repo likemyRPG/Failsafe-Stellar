@@ -104,8 +104,8 @@ Overall, the developer ecosystem is evolving rapidly, and we overcame some versi
 3. **Links**:
    * **Stellar Docs**: [Stellar Docs](https://developers.stellar.org/)
    * **Contract IDs & Stellar Expert**:
-     * `DeadMansWallet` contract: `CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF`
-       [View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF)
+     * `DeadMansWallet` contract: `CBF4ACGDRL47K65642Z7HUG6EDVQXH4WZGTJAROYJ77O677RYIDSKTIL`
+       [View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CBF4ACGDRL47K65642Z7HUG6EDVQXH4WZGTJAROYJ77O677RYIDSKTIL)
 
 
 4. **Client Code**:
@@ -171,7 +171,7 @@ Overall, the developer ecosystem is evolving rapidly, and we overcame some versi
 
 | Contract       | Network | Contract ID       | Explorer Link                                                                     |
 | -------------- | ------- | ----------------- | --------------------------------------------------------------------------------- |
-| DeadMansWallet | Testnet | `CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF` | [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF) |
+| DeadMansWallet | Testnet | `CBF4ACGDRL47K65642Z7HUG6EDVQXH4WZGTJAROYJ77O677RYIDSKTIL` | [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CBF4ACGDRL47K65642Z7HUG6EDVQXH4WZGTJAROYJ77O677RYIDSKTIL) |
 
 ---
 
