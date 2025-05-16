@@ -118,6 +118,8 @@ impl DeadMansWallet {
         if revive_window == 0 {
             panic!("Revive window cannot be zero");
         }
+        // Require authentication from the user
+        user.require_auth();
         // Disallow re-registration
         if load_user_data(&env, &user).is_some() {
             panic!("User is already registered.");
@@ -155,7 +157,11 @@ impl DeadMansWallet {
     /// * If the user is not registered
     /// * If the wallet has already been finalized
     pub fn check_in(env: Env, user: Address) {
+        // Require authentication from the user
+        user.require_auth();
+        
         let mut data = load_user_data(&env, &user).expect("User not registered");
+        
         if data.finalized {
             panic!("User is already finalized.");
         }

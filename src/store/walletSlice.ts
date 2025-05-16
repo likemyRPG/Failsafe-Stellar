@@ -72,10 +72,10 @@ export interface WalletState {
 }
 
 const initialState: WalletState = {
-    keyId: localStorage.getItem("keyId"),
-    contractId: localStorage.getItem("contractId"),
+    keyId: null ,
+    contractId: null,
     balance: null,
-    isConnected: !!localStorage.getItem("keyId"),
+    isConnected: false,
     isLoading: false,
     error: null,
     fundingError: null,
