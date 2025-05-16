@@ -1,4 +1,8 @@
-# Dead Man's Wallet: Summary
+# Failsafe: Summary
+
+Failsafe is a smart contract solution built on Stellar's Soroban platform, designed to provide secure and automated estate planning for crypto assets. By leveraging Stellar's fast, low-cost infrastructure and Soroban's Rust-based smart contracts, we've created a system that ensures your digital assets are protected and properly distributed in case of unexpected events.
+
+**Topics**: `stellar`, `rust`, `smart-contracts`, `consensus-toronto-2025`
 
 ## Demo, UI & Canva slides
 UI Screenshots: [https://imgur.com/a/sj8zbSl](https://imgur.com/a/sj8zbSl)
@@ -13,7 +17,7 @@ Canva Slides: [Canva](https://www.canva.com/design/DAGnklFAg7s/RR3wNpstzNrX09b9j
 
 2. **Unexpected Incapacitation**: If a holder becomes suddenly inactive or incapacitated, their assets remain locked without a contingency plan. Typical solutions involve manually sharing private keys or partial custody, which is insecure, cumbersome, and prone to human error.
 
-**Solution**: **Dead Man's Wallet** addresses both issues by:
+**Solution**: **Failsafe** addresses both issues by:
 
 - Creating a "safety net" that automatically detects user inactivity on-chain and transfers funds to chosen beneficiaries
 - Providing passkey-based authentication to eliminate seed phrase and private key management completely
@@ -43,7 +47,7 @@ This AI-driven approach ensures your assets are distributed according to your cu
 
 * **Soroban**: Stellar's new smart contract platform is fast, low-fee, and developer-friendly.
 * **Passkeys**: We leverage [**Passkey Kit**](https://github.com/kalepail/passkey-kit) to let users sign and authenticate quickly, **replacing** cumbersome private keys with FIDO2/WebAuthn-based passkeys. This eliminates the risk of lost seed phrases or private keys entirely.
-* **Seamless UX**: By using **Passkeys** and **Launchtube** for frictionless wallet creation, users can manage their "Dead Man's Wallet" with just a few taps—no need to store a separate seed phrase or private key that could be lost.
+* **Seamless UX**: By using **Passkeys** and **Launchtube** for frictionless wallet creation, users can manage their "Failsafe" with just a few taps—no need to store a separate seed phrase or private key that could be lost.
 * **Worldwide Reach**: Stellar's payment rails allow beneficiaries to move funds or swap them into local currencies easily.
 
 ## Experience Building on Stellar
@@ -55,6 +59,8 @@ We found **Soroban** straightforward to work with once we:
 * Experimented with **Launchtube** for quick test deployment on the standard Testnet.
 * Integrated **Passkeys** for user authentication.
 
+The steep Rust learning curve and limited developer tooling compared to EVM chains (like hardhat, foundry, or ethers.js) presented initial challenges, but the documentation and examples helped us overcome these hurdles.
+
 Overall, the developer ecosystem is evolving rapidly, and we overcame some version mismatch issues but ended up with a robust solution.
 
 ---
@@ -65,7 +71,7 @@ Overall, the developer ecosystem is evolving rapidly, and we overcame some versi
 
 **URL**: [https://github.com/likemyRPG/broke](https://github.com/likemyRPG/broke)
 
-* **Description**: "Dead Man's Wallet on Stellar: A Soroban-based inactivity protocol with Passkeys integration for secure, user-friendly estate transfer."
+* **Description**: "Failsafe on Stellar: A Soroban-based inactivity protocol with Passkeys integration for secure, user-friendly estate transfer."
 * **Keywords/Topics**:
   * `stellar`
   * `rust`
@@ -171,6 +177,6 @@ Overall, the developer ecosystem is evolving rapidly, and we overcame some versi
 
 ## Conclusion
 
-**Dead Man's Wallet** demonstrates a novel, user-friendly approach to estate transfer using **Soroban** on the **Stellar Testnet**, with integrated **Passkeys** for secure, passwordless login. The entire system is **open-source** on GitHub, built in **Rust** (smart contract) plus a **React** front-end, deployed with **Launchtube**.
+**Failsafe** demonstrates a novel, user-friendly approach to estate transfer using **Soroban** on the **Stellar Testnet**, with integrated **Passkeys** for secure, passwordless login. The entire system is **open-source** on GitHub, built in **Rust** (smart contract) plus a **React** front-end, deployed with **Launchtube**.
 
 **Enjoy exploring** the code, docs, and demos. If you have questions or want to contribute, check out our **GitHub issues** or open a Pull Request!
