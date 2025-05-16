@@ -32,7 +32,7 @@ export const ConnectView: React.FC<ConnectViewProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
               </svg>
             </div>
-            <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-white dark:bg-gray-800 shadow-md flex items-center justify-center">
+            <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-white dark:bg-[var(--card-background)] shadow-md flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
@@ -43,7 +43,7 @@ export const ConnectView: React.FC<ConnectViewProps> = ({
       
       <div className="text-center mb-1">
         <DecoratedHeader className="text-xl mb-2">Wallet Access</DecoratedHeader>
-        <p className="text-gray-600 dark:text-gray-400 text-sm">
+        <p className="text-gray-600 dark:text-gray-300 text-sm">
           Choose how you want to access your <GradientText>Stellar wallet</GradientText>
         </p>
       </div>
@@ -64,9 +64,9 @@ export const ConnectView: React.FC<ConnectViewProps> = ({
         </HoverCard>
 
         <div className="flex items-center gap-2 py-1">
-          <Divider className="flex-1 bg-gray-200 dark:bg-gray-700/60" />
-          <span className="text-xs text-gray-500 dark:text-gray-400 px-2">or</span>
-          <Divider className="flex-1 bg-gray-200 dark:bg-gray-700/60" />
+          <Divider className="flex-1 bg-gray-200 dark:bg-[var(--border-color)]/60" />
+          <span className="text-xs text-gray-500 dark:text-gray-300 px-2">or</span>
+          <Divider className="flex-1 bg-gray-200 dark:bg-[var(--border-color)]/60" />
         </div>
 
         <HoverCard className="p-4">

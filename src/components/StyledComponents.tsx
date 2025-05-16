@@ -24,7 +24,7 @@ export const ActionButton = ({ children, ...props }: React.ComponentProps<typeof
 export const SecondaryButton = ({ children, ...props }: React.ComponentProps<typeof Button> & { children: ReactNode }) => (
     <Button
         {...props}
-        className="bg-white/60 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300 rounded-xl py-2.5 border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm hover:shadow-md backdrop-blur-sm"
+        className="bg-white/60 dark:bg-card/60 text-gray-700 dark:text-gray-200 rounded-xl py-2.5 border border-gray-200 dark:border-[var(--border-color)] hover:bg-white dark:hover:bg-[var(--card-background)] transition-all shadow-sm hover:shadow-md backdrop-blur-sm"
         radius="lg"
     >
         {children}
@@ -46,7 +46,7 @@ export const CardContainer = ({ children, className = "" }: { children: ReactNod
 export const BackButton = ({ children, ...props }: React.ComponentProps<typeof Button> & { children: ReactNode }) => (
     <Button
         {...props}
-        className="self-start text-gray-500 dark:text-gray-400 hover:bg-transparent hover:text-primary dark:hover:text-accent p-0 h-auto min-w-0"
+        className="self-start text-gray-500 dark:text-gray-300 hover:bg-transparent hover:text-primary dark:hover:text-accent p-0 h-auto min-w-0"
         variant="light"
     >
         {children}
@@ -57,7 +57,7 @@ export const WhiteIconButton = ({ children, ...props }: React.ComponentProps<typ
     <Button
         {...props}
         isIconOnly
-        className="text-gray-700 dark:text-white bg-white/80 dark:bg-gray-800/80 hover:bg-white/100 dark:hover:bg-gray-700/100 shadow-sm rounded-xl backdrop-blur-sm transition-all"
+        className="text-gray-700 dark:text-gray-200 bg-white/80 dark:bg-card/80 hover:bg-white/100 dark:hover:bg-card/100 shadow-sm rounded-xl backdrop-blur-sm transition-all"
         size="sm"
     >
         {children}
@@ -65,13 +65,13 @@ export const WhiteIconButton = ({ children, ...props }: React.ComponentProps<typ
 );
 
 export const GradientText = ({ children, className = "" }: { children: ReactNode, className?: string }) => (
-    <span className={`bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent-gradient-from)] to-[var(--accent-gradient-to)] font-semibold ${className}`}>
+    <span className={`bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-blue-600 dark:from-sky-400 dark:to-blue-500 font-semibold ${className}`}>
         {children}
     </span>
 );
 
 export const TabContainer = ({ children, className = "" }: { children: ReactNode, className?: string }) => (
-    <div className={`flex items-center gap-1 p-1.5 bg-white/50 dark:bg-gray-800/40 rounded-xl backdrop-blur-sm shadow-sm ${className}`}>
+    <div className={`flex items-center gap-1 p-1.5 bg-white/50 dark:bg-card/40 rounded-xl backdrop-blur-sm shadow-sm ${className}`}>
         {children}
     </div>
 );
@@ -79,7 +79,7 @@ export const TabContainer = ({ children, className = "" }: { children: ReactNode
 export const TabButton = ({ children, active = false, ...props }: React.ComponentProps<typeof Button> & { children: ReactNode, active?: boolean }) => (
     <Button
         {...props}
-        className={`${active ? 'bg-white dark:bg-gray-700 shadow-sm' : 'bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700/70'} text-xs font-medium py-2 px-4 rounded-lg transition-all`}
+        className={`${active ? 'bg-white dark:bg-[var(--secondary-color)] shadow-sm' : 'bg-transparent hover:bg-gray-100 dark:hover:bg-[var(--secondary-color)]/70'} text-xs font-medium py-2 px-4 rounded-lg transition-all`}
         size="sm"
         variant="flat"
     >
@@ -95,7 +95,7 @@ export const SectionHeader = ({ children }: { children: ReactNode }) => (
 
 export const Badge = ({ children, color = "default" }: { children: ReactNode, color?: "default" | "primary" | "success" | "warning" | "danger" }) => {
     const colorClasses = {
-        default: "bg-gray-100/80 dark:bg-gray-800/80 text-gray-800 dark:text-gray-200",
+        default: "bg-gray-100/80 dark:bg-[var(--secondary-color)]/80 text-gray-800 dark:text-gray-200",
         primary: "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-200",
         success: "bg-green-100/80 dark:bg-green-900/40 text-green-700 dark:text-green-300",
         warning: "bg-yellow-100/80 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300",
@@ -111,7 +111,7 @@ export const Badge = ({ children, color = "default" }: { children: ReactNode, co
 
 export const InfoBox = ({ children, color = "default", icon }: { children: ReactNode, color?: "default" | "primary" | "success" | "warning" | "danger", icon?: ReactNode }) => {
     const colorClasses = {
-        default: "bg-gray-50/70 dark:bg-gray-800/30 border-gray-200/80 dark:border-gray-700/40 text-gray-700 dark:text-gray-300",
+        default: "bg-gray-50/70 dark:bg-[var(--secondary-color)]/30 border-gray-200/80 dark:border-[var(--border-color)]/40 text-gray-700 dark:text-gray-300",
         primary: "bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30 text-primary-800 dark:text-primary-200",
         success: "bg-green-50/70 dark:bg-green-900/10 border-green-100/80 dark:border-green-900/20 text-green-700 dark:text-green-300",
         warning: "bg-yellow-50/70 dark:bg-yellow-900/10 border-yellow-100/80 dark:border-yellow-900/20 text-yellow-700 dark:text-yellow-300",
@@ -150,6 +150,7 @@ export const DecoratedHeader = ({ children, className = "" }: { children: ReactN
     <h1 className={`relative z-10 text-2xl font-bold text-gray-800 dark:text-gray-100 ${className}`}>
         <span className="relative inline-block">
             {children}
+            <span className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-[var(--accent-gradient-from)] to-[var(--accent-gradient-to)] rounded-full"></span>
         </span>
     </h1>
 );
