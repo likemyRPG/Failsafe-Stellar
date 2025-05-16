@@ -35,155 +35,157 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-# Dead Man's Wallet Checker
+# Dead Man's Wallet: Summary
 
-This service provides an API endpoint to check and trigger dead man's wallet contracts on the Stellar blockchain.
+## Problem Statement
 
-## How It Works
+**Problem**: Many individuals hold crypto assets but worry about "What happens if I suddenly become inactive or incapacitated?" Typically, that risk is mitigated by manually sharing private keys or partial custody. This is insecure, cumbersome, and prone to human error.
 
-The API periodically checks wallets registered in the contract. If a user hasn't checked in before their deadline, the service will automatically trigger their dead man's wallet, initiating the transfer of assets to their beneficiaries.
+**Solution**: **Dead Man's Wallet** automatically detects user inactivity on-chain and transfers their funds to a chosen beneficiary if they fail to "check in" within a specified timeframe. A "revive window" allows the user to cancel the process if they become active again.
 
-## API Endpoints
+## User Base
 
-### Check Wallets
+1. **Crypto Holders**: People who want an on-chain contingency plan for their assets.
+2. **Estate Planners**: Families or beneficiaries to ensure seamless asset transfer if the holder is unavailable.
+3. **Developers**: Projects that need an inactivity-based fallback or vault mechanism in their dApps.
 
-**Endpoint:** `/api/check-wallets`
+## Impact
 
-This endpoint performs an immediate scan of all registered wallets in the contract. It checks if any wallets have missed their check-in deadline and triggers them if necessary.
+* **Secure Estate Transfer**: Eliminates worry about lost crypto in the event a user can no longer manage their wallet.
+* **User-Friendly**: Simple "check-in" function that can be triggered from a front-end or even automatically via reminders or push notifications.
+* **No Third Party**: Everything is enforced by a Soroban (Stellar) smart contract, removing the need to trust an intermediary.
 
-**Method:** POST
+## Why Stellar? (Featuring Passkeys)
 
-**Environment Variables Required:**
-- `SERVER_SECRET_KEY` - The secret key of the account that will sign the trigger transactions
-- `CONTRACT_ID` - The ID of the dead man's wallet contract
+* **Soroban**: Stellar's new smart contract platform is fast, low-fee, and developer-friendly.
+* **Passkeys**: We leverage [**Passkey Kit**](https://github.com/kalepail/passkey-kit) to let users sign and authenticate quickly, **replacing** cumbersome private keys with FIDO2/WebAuthn-based passkeys.
+* **Seamless UX**: By using **Passkeys** and **Launchtube** for frictionless wallet creation, users can manage their "Dead Man's Wallet" with just a few taps—no need to store a separate seed phrase or private key.
+* **Worldwide Reach**: Stellar's payment rails allow beneficiaries to move funds or swap them into local currencies easily.
 
-**Response Example:**
-```json
-{
-  "message": "Wallet check completed successfully",
-  "results": {
-    "totalUsers": 5,
-    "usersNotInDatabase": 1,
-    "usersAlreadyTriggered": 1,
-    "usersTriggered": 1,
-    "usersActive": 2,
-    "errors": 0
-  }
-}
+## Experience Building on Stellar
+
+We found **Soroban** straightforward to work with once we:
+
+* Understood the no_std environment in Rust.
+* Learned about the changes from classic SDK usage to Soroban's approach (e.g., referencing addresses, local storage, events).
+* Experimented with **Launchtube** for quick test deployment on the standard Testnet.
+* Integrated **Passkeys** for user authentication.
+
+Overall, the developer ecosystem is evolving rapidly, and we overcame some version mismatch issues but ended up with a robust solution.
+
+---
+
+# MVP (Minimal Viable Product)
+
+## Public Code Repository
+
+**URL**: [https://github.com/example-org/stellar-dead-mans-wallet](https://github.com/example-org/stellar-dead-mans-wallet)
+
+* **Unique Repo Name**: `stellar-dead-mans-wallet`
+* **Description**: "Dead Man's Wallet on Stellar: A Soroban-based inactivity protocol with Passkeys integration for secure, user-friendly estate transfer."
+* **Keywords/Topics**:
+  * `stellar`
+  * `rust`
+  * `smart-contracts`
+  * `consensus-toronto-2025`
+
+### README Highlights
+
+1. **List of Implemented Features**:
+   * Register user with beneficiary, inactivity timeout, revival window
+   * Check-in function to reset inactivity timer
+   * Trigger function to finalize inactivity
+   * Revive function to reclaim wallet if within grace period
+   * Finalize function to transfer funds to beneficiary
+   * **Passkeys integration** for user authentication
+   * Deployed to **Stellar Testnet** with **Launchtube**
+   * Events for monitoring (register, check_in, trigger, revive, finalize)
+
+2. **List of Technologies**:
+   * **Soroban (Rust)** for the smart contract
+   * **js-stellar-sdk** for the front-end interactions
+   * **Passkey Kit** for user authentication
+   * **Launchtube** for contract deployment
+   * React + TypeScript for the UI
+   * GitHub Actions for automated builds/tests (optional)
+
+3. **Links**:
+   * **Why** narrative: [docs/why.md](https://github.com/example-org/stellar-dead-mans-wallet/docs/why.md)
+   * **Technical Design Docs**: [docs/design.md](https://github.com/example-org/stellar-dead-mans-wallet/docs/design.md)
+   * **Contract IDs & Stellar Expert**:
+     * `DeadMansWallet` contract: `CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF`
+       [View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF)
+
+
+4. **Client Code**:
+   * The front-end in `web/` integrates the **Passkeys** sign-in flow and calls the Soroban contract methods via `js-stellar-sdk`.
+
+---
+# Technical Documentation
+
+## Architecture & Diagrams
+
+```
+                +-----------+          
+                |  Frontend |  <-- React + Passkeys
+                +-----+-----+
+                      |
+                      | (HTTP + WebAuthn)
+                      v
+               +---------------+
+               |  Node API     | 
+               +-------+-------+
+                       |
+                       v  (RPC to Soroban)
+        +-----------------------------------+
+        |        Soroban Contract          | <-- Deployed on Stellar Testnet
+        |  Dead Man's Wallet (Rust/wasm)   |
+        |  + store UserData per Address    |
+        |  + timeouts, triggers, finalizes |
+        +-----------------------------------+
 ```
 
-## Generating a Server Secret Key
+## Components
 
-To use this service, you need a Stellar account to sign the trigger transactions. Here's how to get a server secret key:
+1. **Soroban Contract** (`dead-mans-wallets/src/lib.rs`):
+   * Manages user state, inactivity detection, triggers, finalization.
+   * Emits events for register, check_in, trigger, revive, finalize.
+   * Stores user data in persistent storage keyed by user address.
 
-### Using the Provided Script
+2. **Frontend (Next.js)** (`src/app/`):
+   * Integrates **Passkeys** (via [kalepail/passkey-kit](https://github.com/kalepail/passkey-kit)) for user authentication.
+   * Calls the contract's register/check_in/finalize methods with `js-stellar-sdk`.
+   * Displays the current user's status, next check-in deadline, etc.
 
-1. Run the keypair generation script:
-   ```bash
-   node scripts/generate-keypair.js
-   ```
+3. **Backend**:
+   * Used for fast response times on frontend while keeping everything in sync with contract
 
-2. The script will output a new Stellar keypair. Save the Secret Key in your environment variables.
+## Design Choices
 
-3. Fund the account with XLM:
-   - **Testnet**: Use the [Stellar Laboratory](https://laboratory.stellar.org/#account-creator?network=test) friendbot
-   - **Mainnet**: Transfer XLM from an exchange or another wallet
+* **Storage**:
+  * We store `UserData` in Soroban's contract storage keyed by `Address`.
+  * This ensures all logic is on-chain, no external DB needed for core features.
+* **Events**:
+  * We emit events (`register`, `check_in`, `trigger`, `revive`, `finalize`) to enable off-chain monitoring or indexing.
+* **Passkeys Implementation**:
+  * We rely on `passkey-kit` for FIDO2-based key creation and signing.
+  * This simplifies user login while letting them sign Soroban transactions without manually handling private keys.
+* **Challenges Overcome**:
+  * **Reference-types** issues while compiling. We disabled them for Soroban.
+  * **No `env.caller()`** in older Soroban SDK versions. We pass user addresses explicitly.
 
-### Manual Creation
+---
 
-You can also create a keypair using the [Stellar Laboratory](https://laboratory.stellar.org/#account-creator):
+## Deployed Contract IDs
 
-1. Go to the Account Creator in Stellar Laboratory
-2. Select the network (Test or Public)
-3. Generate a keypair by clicking "Generate keypair"
-4. Save the secret key securely
-5. Fund the account with XLM
+| Contract       | Network | Contract ID       | Explorer Link                                                                     |
+| -------------- | ------- | ----------------- | --------------------------------------------------------------------------------- |
+| DeadMansWallet | Testnet | `CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF` | [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF) |
 
-### Security Best Practices
+---
 
-- Use a dedicated Stellar account for the service, not your personal account
-- Store the secret key in environment variables, never in code
-- For production, use secrets management services (AWS Secrets Manager, Google Secret Manager, etc.)
-- Regularly monitor the account for sufficient XLM balance
+## Conclusion
 
-## Setup Instructions
+**Dead Man's Wallet** demonstrates a novel, user-friendly approach to estate transfer using **Soroban** on the **Stellar Testnet**, with integrated **Passkeys** for secure, passwordless login. The entire system is **open-source** on GitHub, built in **Rust** (smart contract) plus a **React** front-end, deployed with **Launchtube**.
 
-1. Set the following environment variables:
-   - `SERVER_SECRET_KEY` - A Stellar account secret key with sufficient XLM to pay for transactions
-   - `CONTRACT_ID` - The Soroban contract ID for the dead man's wallet contract
-
-2. Deploy the service to your preferred hosting provider
-
-3. Set up a cron job or scheduled task to call the `/api/check-wallets` endpoint regularly (e.g., every hour)
-
-## Setting Up Scheduled Execution
-
-The API needs to be called regularly to check for wallets that have exceeded their deadlines. Here are some options for setting up automatic execution:
-
-### Using a Cron Service
-
-Several cloud services offer cron job functionality:
-
-#### Vercel Cron Jobs (if deployed on Vercel)
-
-```json
-// vercel.json
-{
-  "crons": [
-    {
-      "path": "/api/check-wallets",
-      "schedule": "0 * * * *"  // Every hour
-    }
-  ]
-}
-```
-
-#### GitHub Actions
-
-```yaml
-# .github/workflows/check-wallets.yml
-name: Check Dead Man's Wallets
-
-on:
-  schedule:
-    - cron: '0 */1 * * *'  # Every hour
-
-jobs:
-  check-wallets:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Call API Endpoint
-        run: curl -X POST https://your-domain.com/api/check-wallets
-```
-
-#### Traditional Cron Job (on Linux/Unix)
-
-```bash
-# Run every hour
-0 * * * * curl -X POST https://your-domain.com/api/check-wallets
-```
-
-#### AWS CloudWatch Events
-
-You can set up a CloudWatch Events rule to trigger a Lambda function that calls your API endpoint every hour.
-
-## Security Considerations
-
-- The server secret key should be kept secure and only accessible to the service
-- Consider using a dedicated Stellar account for this service instead of a personal account
-- Ensure your environment variables are securely stored and not exposed in public repositories
-- If using webhook or cron services, consider adding API authentication to prevent unauthorized calls
-
-## Development
-
-To run the service locally:
-
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Add required environment variables to `.env.local` file:
-   ```
-   SERVER_SECRET_KEY=YOUR_SECRET_KEY
-   CONTRACT_ID=YOUR_CONTRACT_ID
-   ```
-4. Start the development server: `npm run dev`
-5. Test the API endpoint by making a POST request to http://localhost:3000/api/check-wallets
+**Enjoy exploring** the code, docs, and demos. If you have questions or want to contribute, check out our **GitHub issues** or open a Pull Request!
