@@ -7,7 +7,7 @@ export * as rpc from '@stellar/stellar-sdk/rpc';
 export declare const networks: {
     readonly testnet: {
         readonly networkPassphrase: "Test SDF Network ; September 2015";
-        readonly contractId: "CDZ2QXYGRRPHEZ3E3QOK3R6BI5FYWIX277YFUFXX2LBZDYM2BYZSX2OF";
+        readonly contractId: "CBF4ACGDRL47K65642Z7HUG6EDVQXH4WZGTJAROYJ77O677RYIDSKTIL";
     };
 };
 /**
@@ -128,6 +128,29 @@ export interface Client {
         simulate?: boolean;
     }) => Promise<AssembledTransaction<null>>;
     /**
+     * Construct and simulate a finalize_admin transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Finalize with multiple beneficiaries determined by admin/AI
+     * This allows distributing funds to multiple beneficiaries with different percentages
+     */
+    finalize_admin: ({ user, beneficiaries, amounts }: {
+        user: string;
+        beneficiaries: Array<string>;
+        amounts: Array<i128>;
+    }, options?: {
+        /**
+         * The fee to pay for the transaction. Default: BASE_FEE
+         */
+        fee?: number;
+        /**
+         * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+         */
+        timeoutInSeconds?: number;
+        /**
+         * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+         */
+        simulate?: boolean;
+    }) => Promise<AssembledTransaction<null>>;
+    /**
      * Construct and simulate a get_user_data transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     get_user_data: ({ user }: {
@@ -202,6 +225,7 @@ export declare class Client extends ContractClient {
         trigger: (json: string) => AssembledTransaction<null>;
         revive: (json: string) => AssembledTransaction<null>;
         finalize: (json: string) => AssembledTransaction<null>;
+        finalize_admin: (json: string) => AssembledTransaction<null>;
         get_user_data: (json: string) => AssembledTransaction<Option<UserData>>;
         list_users: (json: string) => AssembledTransaction<string[]>;
         get_status: (json: string) => AssembledTransaction<string>;
