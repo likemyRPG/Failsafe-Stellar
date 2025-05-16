@@ -6,7 +6,7 @@ Failsafe is a smart contract solution built on Stellar's Soroban platform, desig
 
 ## Demo, UI & Canva slides
 UI Screenshots: [https://imgur.com/a/sj8zbSl](https://imgur.com/a/sj8zbSl)
-Demo Video: 
+Demo Video: [Loom](https://www.loom.com/share/19f4c71c1d684b0a93ff07c84d9ce370?sid=cfc4110f-382b-4008-a572-30bfa49003d6)
 Canva Slides: [Canva](https://www.canva.com/design/DAGnklFAg7s/RR3wNpstzNrX09b9jgiE0g/edit?utm_content=DAGnklFAg7s&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
 ## Problem Statement
