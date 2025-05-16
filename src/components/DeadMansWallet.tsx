@@ -34,6 +34,8 @@ import {
 } from "@heroui/react";
 import { toast } from 'react-toastify';
 import { useDeadMansWallet } from '../hooks/useDeadMansWallet';
+// Import our custom styled components
+import { ActionButton, SecondaryButton, GradientText, DecoratedHeader, FloatingIcon, HoverCard, InfoBox, Badge as CustomBadge, StyledTextField } from './StyledComponents';
 
 // This will be replaced with actual Stellar chain interaction
 const mockDeadManWalletSettings = {
@@ -247,40 +249,40 @@ const DeadMansWallet: React.FC = () => {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Failsafe</h3>
-        {deadMansWallet.isConfigured && (
-          <Badge 
-            color={getBadgeColor()} 
-            size="sm"
-            variant="flat"
-          >
-            {timeExpired ? "Expired" : `${daysRemaining} days left`}
-          </Badge>
-        )}
-      </CardHeader>
-      <CardBody>
+    <div>
+
+      <div>
         {!isConnected ? (
-          <div className="text-center">
-            <p className="mb-2">Connect your wallet to use this feature</p>
+          <div className="text-center p-8">
+            <FloatingIcon>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800/60 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
+            </FloatingIcon>
+            <DecoratedHeader className="text-xl mb-3">Wallet Disconnected</DecoratedHeader>
+            <p className="mb-4 text-gray-600 dark:text-gray-400 text-sm">Connect your wallet to use the Failsafe feature</p>
+            <ActionButton size="sm">
+              Connect Wallet
+            </ActionButton>
           </div>
         ) : isLoading ? (
-          <div className="flex items-center justify-center">
-            <Spinner size="sm" />
-            <p className="ml-2">Loading...</p>
+          <div className="flex items-center justify-center p-8">
+            <Spinner className="text-accent" size="sm" />
+            <p className="ml-3 text-gray-600 dark:text-gray-400">Loading failsafe details...</p>
           </div>
         ) : (
-          <div className="mt-4">
+          <div className="mt-2">
             {deadMansWallet.isConfigured ? (
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800/60 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm shadow-sm overflow-hidden">
-                <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-gray-200 dark:border-gray-800/60 flex items-center">
-                  <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md flex items-center justify-center mr-2">
+              <div className="glass-card rounded-xl overflow-hidden border border-[var(--border-color)] shadow-soft">
+                <div className="p-3 bg-gradient-to-r from-[var(--accent-gradient-from)]/10 to-[var(--accent-gradient-to)]/10 dark:from-[var(--accent-gradient-from)]/5 dark:to-[var(--accent-gradient-to)]/5 border-b border-[var(--border-color)] flex items-center">
+                  <div className="w-6 h-6 btn-gradient rounded-md flex items-center justify-center mr-2 shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Failsafe Status</h3>
+                  <h3 className="text-sm font-medium text-gray-800 dark:text-gray-100">Failsafe Status</h3>
                 </div>
                 
                 <div className="p-4 space-y-3">
@@ -390,10 +392,10 @@ const DeadMansWallet: React.FC = () => {
                           </span>
                           <span className={`text-xs font-medium px-2 py-0.5 rounded ${
                             getTimeRemainingPercentage() > 50 
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                              ? 'bg-green-100/80 text-green-700 dark:bg-green-900/30 dark:text-green-300 backdrop-blur-sm' 
                               : getTimeRemainingPercentage() > 25 
-                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' 
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                ? 'bg-yellow-100/80 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 backdrop-blur-sm' 
+                                : 'bg-red-100/80 text-red-700 dark:bg-red-900/30 dark:text-red-300 backdrop-blur-sm'
                           }`}>
                             {timeExpired ? 'Expired!' : formatTimeRemaining(getTimeRemainingMs())}
                           </span>
@@ -402,10 +404,10 @@ const DeadMansWallet: React.FC = () => {
                           <div 
                             className={`h-1.5 rounded-full ${
                               getTimeRemainingPercentage() > 50 
-                                ? 'bg-gradient-to-r from-green-400 to-green-500' 
+                                ? 'bg-gradient-to-r from-green-400 to-emerald-500' 
                                 : getTimeRemainingPercentage() > 25 
-                                  ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
-                                  : 'bg-gradient-to-r from-red-400 to-red-500'
+                                  ? 'bg-gradient-to-r from-amber-400 to-yellow-500' 
+                                  : 'bg-gradient-to-r from-red-400 to-rose-500'
                             }`}
                             style={{ width: `${getTimeRemainingPercentage()}%` }}
                           ></div>
@@ -415,7 +417,7 @@ const DeadMansWallet: React.FC = () => {
                     
                     <div className="flex gap-2 mt-4">
                       <Button
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1"
+                        className="w-full btn-gradient text-white border-none text-xs py-1.5 rounded-lg shadow-md hover:shadow-glow"
                         onClick={handleCheckInWithLoader}
                         isLoading={checkingIn}
                         size="sm"
@@ -423,7 +425,7 @@ const DeadMansWallet: React.FC = () => {
                         Check In Now
                       </Button>
                       <Button
-                        className="w-full border border-red-200 dark:border-red-900/30 text-red-500 dark:text-red-400 dark:bg-red-900/10 text-xs py-1"
+                        className="w-full border border-red-200/80 dark:border-red-900/20 text-red-500 dark:text-red-400 bg-white/60 dark:bg-red-900/10 backdrop-blur-sm text-xs py-1.5 rounded-lg shadow-sm hover:bg-white dark:hover:bg-red-900/20"
                         onClick={openConfigModal}
                         variant="flat"
                         size="sm"
@@ -435,24 +437,28 @@ const DeadMansWallet: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800/60 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm shadow-sm p-4">
-                <div className="flex flex-col items-center text-center p-2">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Failsafe Not Configured</h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
-                    Set up a failsafe to automatically transfer your funds if you don't check in regularly.
+              <div className="glass-card rounded-xl p-5">
+                <div className="flex flex-col items-center text-center p-3">
+                  <FloatingIcon>
+                    <div className="w-16 h-16 btn-gradient rounded-2xl flex items-center justify-center mb-4 shadow-glow">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </FloatingIcon>
+                  <DecoratedHeader className="text-xl mb-2">Failsafe Not Configured</DecoratedHeader>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-5 max-w-sm">
+                    Set up a failsafe to automatically transfer your <GradientText>Stellar assets</GradientText> if you don't check in regularly.
                   </p>
-                  <Button
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs"
+                  <ActionButton
                     onClick={openConfigModal}
                     size="sm"
                   >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
                     Configure Switch
-                  </Button>
+                  </ActionButton>
                 </div>
               </div>
             )}
@@ -461,15 +467,15 @@ const DeadMansWallet: React.FC = () => {
 
         {/* Configuration Modal */}
         <Modal isOpen={isOpen} onClose={onClose} className="backdrop-blur-sm" scrollBehavior="inside" size="full">
-          <ModalContent className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800/60 rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-md mx-auto">
-            <ModalHeader className="border-b border-gray-200 dark:border-gray-800/60 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-t-xl">
+          <ModalContent className="glass-card rounded-2xl w-full max-w-md mx-auto shadow-xl dark:shadow-black/40">
+            <ModalHeader className="border-b border-[var(--border-color)] bg-gradient-to-r from-[var(--accent-gradient-from)]/10 to-[var(--accent-gradient-to)]/10 dark:from-[var(--accent-gradient-from)]/5 dark:to-[var(--accent-gradient-to)]/5 rounded-t-2xl">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md flex items-center justify-center">
+                <div className="w-7 h-7 btn-gradient rounded-md flex items-center justify-center shadow-glow">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Configure Failsafe</h3>
+                <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">Configure Failsafe</h3>
               </div>
             </ModalHeader>
             <ModalBody className="px-5 py-4">
@@ -483,19 +489,17 @@ const DeadMansWallet: React.FC = () => {
                     Check-in Period (days)
                   </label>
                   {deadMansWallet.isConfigured ? (
-                    <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg text-sm border border-gray-300 dark:border-gray-700">
+                    <div className="bg-gray-100/70 dark:bg-gray-800/60 p-2.5 rounded-xl text-sm border border-gray-300/60 dark:border-gray-700/60 backdrop-blur-sm">
                       {newCheckInPeriod} {Number(newCheckInPeriod) === 1 ? 'day' : 'days'}
                     </div>
                   ) : (
-                    <Input
-                      type="number"
-                      min={1}
-                      max={365}
-                      placeholder="Days between check-ins"
-                      value={newCheckInPeriod}
-                      onChange={(e) => setNewCheckInPeriod(e.target.value)}
-                      className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
-                      variant="bordered"
+                    <StyledTextField
+                     type="number"
+                     min={1}
+                     max={365}
+                     placeholder="Days between check-ins"
+                     value={newCheckInPeriod}
+                     onChange={(e) => setNewCheckInPeriod(e.target.value)}
                     />
                   )}
                   <p className="mt-1.5 text-xs text-foreground-500 dark:text-gray-400 pl-5">
@@ -690,59 +694,59 @@ const DeadMansWallet: React.FC = () => {
                 )}
                 
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-lg text-blue-800 dark:text-blue-300 text-sm">
-                  <div className="flex items-start">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>
-                      If you don't check in within the specified period:
-                      {useAiOption ? (
-                        aiEnabled ? (
-                          " The AI will execute your instructions and determine how to distribute funds among your beneficiaries."
-                        ) : (
-                          " The AI will automatically distribute your funds among the listed beneficiaries."
-                        )
+                  <InfoBox
+                    color="primary"
+                    icon={
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    }
+                  >
+                    If you don't check in within the specified period:
+                    {useAiOption ? (
+                      aiEnabled ? (
+                        " The AI will execute your instructions and determine how to distribute funds among your beneficiaries."
                       ) : (
-                        " All your funds will be automatically transferred to the destination address."
-                      )}
-                    </span>
-                  </div>
+                        " The AI will automatically distribute your funds among the listed beneficiaries."
+                      )
+                    ) : (
+                      " All your funds will be automatically transferred to the destination address."
+                    )}
+                  </InfoBox>
                 </div>
               </div>
             </ModalBody>
-            <ModalFooter className="border-t border-gray-200 dark:border-gray-800/60 gap-2 flex-wrap">
-              <Button 
-                variant="flat"
-                className="border border-red-200 dark:border-red-900/30 text-red-500 dark:text-red-400 dark:bg-red-900/10 text-xs py-1 flex-1 min-w-0"
+            <ModalFooter className="border-t border-[var(--border-color)] gap-2 flex-wrap p-4">
+              <SecondaryButton
                 onClick={onClose}
                 size="sm"
+                className="flex-1 min-w-0 text-red-500 dark:text-red-400 border-red-200/80 dark:border-red-900/30 bg-white/40 dark:bg-red-900/10"
               >
                 Cancel
-              </Button>
-              <Button 
-                variant="solid"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1 flex-1 min-w-0"
+              </SecondaryButton>
+              <ActionButton
                 onClick={handleSaveSettings}
                 isLoading={isLoading}
                 size="sm"
+                className="flex-1 min-w-0"
               >
                 Save Settings
-              </Button>
+              </ActionButton>
             </ModalFooter>
           </ModalContent>
         </Modal>
         
         {/* Add Beneficiary Modal */}
         <Modal isOpen={isAddBeneficiaryOpen} onClose={onCloseAddBeneficiary} className="backdrop-blur-sm" size="full">
-          <ModalContent className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800/60 rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-md mx-auto">
-            <ModalHeader className="border-b border-gray-200 dark:border-gray-800/60 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-t-xl">
+          <ModalContent className="glass-card rounded-2xl w-full max-w-md mx-auto shadow-xl dark:shadow-black/40">
+            <ModalHeader className="border-b border-[var(--border-color)] bg-gradient-to-r from-[var(--accent-gradient-from)]/10 to-[var(--accent-gradient-to)]/10 dark:from-[var(--accent-gradient-from)]/5 dark:to-[var(--accent-gradient-to)]/5 rounded-t-2xl">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md flex items-center justify-center">
+                <div className="w-7 h-7 btn-gradient rounded-md flex items-center justify-center shadow-glow">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Add Beneficiary</h3>
+                <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">Add Beneficiary</h3>
               </div>
             </ModalHeader>
             <ModalBody className="px-5 py-4">
@@ -751,13 +755,11 @@ const DeadMansWallet: React.FC = () => {
                   <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block">
                     Name
                   </label>
-                  <Input
+                  <StyledTextField
                     type="text"
                     placeholder="Enter beneficiary name"
                     value={newBeneficiary.name}
                     onChange={(e) => setNewBeneficiary({...newBeneficiary, name: e.target.value})}
-                    className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
-                    variant="bordered"
                   />
                 </div>
                 
@@ -765,13 +767,11 @@ const DeadMansWallet: React.FC = () => {
                   <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block">
                     Wallet Address
                   </label>
-                  <Input
+                  <StyledTextField
                     type="text"
                     placeholder="Enter Stellar address"
                     value={newBeneficiary.walletAddress}
                     onChange={(e) => setNewBeneficiary({...newBeneficiary, walletAddress: e.target.value})}
-                    className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
-                    variant="bordered"
                   />
                 </div>
                 
@@ -779,39 +779,35 @@ const DeadMansWallet: React.FC = () => {
                   <label className="text-sm font-medium dark:text-gray-300 mb-1.5 block">
                     Relationship (Optional)
                   </label>
-                  <Input
+                  <StyledTextField
                     type="text"
                     placeholder="Family, Friend, Business Partner, etc."
                     value={newBeneficiary.relationship || ''}
                     onChange={(e) => setNewBeneficiary({...newBeneficiary, relationship: e.target.value})}
-                    className="bg-transparent border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
-                    variant="bordered"
                   />
                 </div>
               </div>
             </ModalBody>
-            <ModalFooter className="border-t border-gray-200 dark:border-gray-800/60 gap-2 flex-wrap">
-              <Button 
-                variant="flat"
-                className="border border-red-200 dark:border-red-900/30 text-red-500 dark:text-red-400 dark:bg-red-900/10 text-xs py-1 flex-1 min-w-0"
+            <ModalFooter className="border-t border-[var(--border-color)] gap-2 flex-wrap p-4">
+              <SecondaryButton
                 onClick={onCloseAddBeneficiary}
                 size="sm"
+                className="flex-1 min-w-0 text-red-500 dark:text-red-400 border-red-200/80 dark:border-red-900/30 bg-white/40 dark:bg-red-900/10"
               >
                 Cancel
-              </Button>
-              <Button 
-                variant="solid"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none text-xs py-1 flex-1 min-w-0"
+              </SecondaryButton>
+              <ActionButton
                 onClick={handleAddBeneficiary}
                 size="sm"
+                className="flex-1 min-w-0"
               >
                 Add Beneficiary
-              </Button>
+              </ActionButton>
             </ModalFooter>
           </ModalContent>
         </Modal>
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }
 
