@@ -65,10 +65,6 @@ The steep Rust learning curve and limited developer tooling compared to EVM chai
 
 Overall, the developer ecosystem is evolving rapidly, and we overcame some version mismatch issues but ended up with a robust solution.
 
----
-
-# MVP (Minimal Viable Product)
-
 ## Public Code Repository
 
 **URL**: [https://github.com/likemyRPG/Failsafe-Stellar](https://github.com/likemyRPG/Failsafe-Stellar)
